@@ -1,0 +1,73 @@
+general:
+        apex_domain: "noor.now"
+        hostname: "noor"
+        fileserver_root: /srv/share
+
+ssh:
+        port: 1488 # lazy security from bots
+
+# uncomment to enable components
+# keep the order
+## caddy should be installed last to set up reverse-proxy
+components:
+        - frigate
+        - pihole
+        - caddy
+##################################################################
+caddy:
+        fileserver:
+                enable: true
+                root: "/srv/"
+                auto_https: true
+
+##################################################################
+frigate:
+        # moved here for the single point config (better user exp)
+        docker:
+                volumes:
+                        # fileserver_root: /srv/share
+                        - ./config:/config
+                        - ./storage:/media/frigate
+                        - type: tmpfs # Optional: 1GB of memory, reduces SSD/SD Card wear
+                          target: /tmp/cache
+                          tmpfs:
+                          size: 1000000000
+                ports:
+                        - "8971:8971"
+                        # - "5000:5000" # Internal unauthenticated access. Expose carefully.
+                        # - "8554:8554" # RTSP feeds
+                        - "8555:8555/tcp" # WebRTC over tcp
+                        # - "8555:8555/udp" # WebRTC over udp
+        tls: false
+        mqtt: false
+        # for each cam
+        default_settings:
+                detect:
+                        enabled: false
+                record:
+                        enabled: true
+                        expire_interval: 240 # timeout between cleanup runs (mins)
+                        retain:
+                                days: 7
+                                mode: all
+                # single input for each composed of login, password, ip, stream
+                ffmpeg:
+                        roles:
+                                - audio
+                                - record
+                motion:
+                        threshold: 19
+                        contour_area: 10
+                        improve_contrast: true
+        # go2rtc: streams: name: - rtsp://data_from[cams]
+        cams:
+                # example; if detect true, take params for [motion] from default_settings
+#                name:
+#                        login: ""
+#                        password: ""
+#                        ip: 1.1.1.1
+#                        stream: "stream1"
+#                        detect: false
+#                        # every cam is enabled and recording
+#                        # default expire interval 120
+#                        # onvif: port - 2020, login, password, ip the same
