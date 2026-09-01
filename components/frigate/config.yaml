@@ -1,0 +1,97 @@
+mqtt:
+  enabled: false
+
+# managed by caddy
+tls:
+  enabled: false
+
+go2rtc:
+  # example
+  # streams:
+  #   name:
+  #     - rtsp://name:pass@ip:554/stream1
+
+snapshots:
+  enabled: true
+  clean_copy: true
+  timestamp: true
+  bounding_box: true
+  crop: false
+  # required_zones: [] # Restrict snapshots to objects that entered any of the listed zones
+  retain:
+    default: 10 # days
+    objects:
+      person: 40
+  quality: 70 # 0-100
+
+record:
+  enabled: true
+  expire_interval: 120 # timeout between cleanup runs (mins)
+  retain:
+    days: 7
+    mode: all
+
+detect:
+  enabled: false
+  width: 1280
+  height: 720
+  fps: 5
+  min_initialized: 5
+  min_disappeard: 25
+  stationay:
+    classifier: true
+    interval: 50
+    threshold: 50
+
+motion:
+  enabled: false
+  threshold: 35
+  contour_area: 25 # sensitivity: 10-high, 50-low
+  improve_contrast: true
+
+cameras:
+  fridge_c110:
+    ffmpeg:
+      inputs:
+        - path: rtsp://nooros_c110:pass@192.168.0.20:554/stream1 # <----- The stream you want to use for detection
+          roles:
+            - audio
+            - record
+    onvif:
+      host: 192.168.0.20
+      port: 2020
+      user: nooros_c110
+      password: pass
+
+
+  out_c210:
+    detect:
+      enabled: true
+    motion:
+      enabled: true
+    ffmpeg:
+      inputs:
+        - path: rtsp://nooros_c210:pass@192.168.0.19:554/stream1
+          roles:
+            - audio
+            - record
+    onvif:
+      host: 192.168.0.19
+      port: 2020
+      user: nooros_c210
+      password: pass
+
+  hall_c110:
+    ffmpeg:
+      inputs:
+        - path: rtsp://nooros_c110:pass@192.168.0.21:554/stream1 # <----- The stream you want to use for detection
+          roles:
+            - audio
+            - record
+    onvif:
+      host: 192.168.0.21
+      port: 2020
+      user: nooros_c110
+      password: pass
+
+version: 0.15-1

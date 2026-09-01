@@ -1,37 +1,36 @@
 # Project overview
 Automated server deployment driven by a single `config.yaml` that the user edits
 before running. Target is a machine on the local network. The only ingress is
-WireGuard — nothing else is exposed.
+WireGuard - nothing else is exposed.
 
 # General guidelines
 - Target platform: Debian 13 (trixie), systemd, x86_64
-- Languages: Python 3.11+ and Bash. Pick by task: multi-step shell work → Bash
-  script; YAML parsing, validation, templating → Python
+- Languages: Python 3.11+ and Bash. Pick by task: multi-step shell work - Bash
+  script; YAML parsing, validation, templating - Python
 - Python deps: venv at `.venv/`, declared in `requirements.txt`
 - Every operation must be idempotent. Re-running a deploy on a converged host
   is a no-op and must exit 0
 - Validate the entire config before mutating anything. No partial application
 
 # Components are independent
-No component may reference another component by name — not in code, not in
+No component may reference another component by name - not in code, not in
 config, not in a dependency list.
 
 If a task seems to require component A to know about component B, that is a
-registry problem. Do not hardcode the name — ask.
+registry problem. Do not hardcode the name - ask.
+
+# How the actual 
 
 # Project structure
-
 - /
   - deploy.sh # entry point: bootstrap venv, exec main.py "$@"
   - main.py # parse, validate, render, invoke each install.sh
   - requirements.txt
   - config.yaml # user-edited, gitignored, 0600
-  - config.example.yaml # shipped template, kept in sync with schemas
 - lib/
   - packages.sh # package installation abstraction
   - common.sh # logging, idempotency helpers
-- secrets/ # generated keys, 0600, gitignored
-- generate/ # generated configs
+- build/ # generated configs
 - components/
   - <name>/
     - install.sh # entry point; the only thing main.py calls
@@ -44,7 +43,7 @@ registry problem. Do not hardcode the name — ask.
 
 `deploy.sh` stays dumb: create/activate the venv, install requirements,
 `exec python main.py "$@"`. If it grows a component loop, the boundary has
-slipped — that logic belongs in `main.py`.
+slipped - that logic belongs in `main.py`.
 
 # How config reaches a component
 `main.py` merges the layers, resolves references and derived values, then
@@ -64,9 +63,9 @@ never reads another component's rendered config.
 
 # Running and testing
 There is no unit test suite. Verify only by:
-- `./deploy.sh --check` — validates config and exits
-- `./deploy.sh --dry-run` — prints planned actions without executing
-- `./deploy.sh --generate` - generates configs into /generated folder
+- `./deploy.sh --check` - validates config and exits
+- `./deploy.sh --dry-run` - prints planned actions without executing
+- `./deploy.sh --generate` - generates configs into /build folder
 - `shellcheck` on all `*.sh`, `ruff check` on all Python
 
 Never run a real deploy against a live host to test a change.

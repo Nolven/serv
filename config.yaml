@@ -13,6 +13,7 @@ components:
         - frigate
         - pihole
         - caddy
+        - wireguard
 ##################################################################
 caddy:
         fileserver:
