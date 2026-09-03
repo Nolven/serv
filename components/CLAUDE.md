@@ -26,23 +26,6 @@ Should contain interfaces for both validation of input config and generation of 
 Example: frigate provides web-ui for the user, so it returns back port on which UI is running and name, so a reverse-proxy could map it
 If not sure what to return and in which format - ask.
  
-## facts
- 
-`general:` from `config.yaml` verbatim, plus values derived from it:
- 
-    facts.apex_domain       "noor.now"
-    facts.hostname          "noor"
-    facts.fileserver_root   "/srv/share"
-    facts.stack_root        "/stacks/survur"
-    facts.ssh_port          1488
-    facts.component_root    "/stacks/survur/<name>"   # this component's own
- 
-Read-only, identical for every component, keyed by *what the value is* - never
-by which component produced it. `facts["timezone"]` is fine; `facts["caddy_port"]`
-is a component name in disguise and belongs in the registry instead.
- 
-A component may know its own name and its own paths. That is not a cross
-reference.
 
 # Merge semantics
  

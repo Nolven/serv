@@ -14,6 +14,7 @@ general:
         stack_root: /stacks/survur     # where everything non-shared will exist
         ssh:
                 port: 1488 # lazy security from bots
+        # generated_path: added in main.py call
 
 ##################################################################
 caddy:
@@ -26,6 +27,9 @@ caddy:
 
 ##################################################################
 frigate:
+        subdomain:
+                name: "cams"
+                port: 8971
         docker:
                 shm_size: "100m"
                 volumes:
