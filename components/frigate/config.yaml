@@ -59,10 +59,10 @@ motion:
 #    ffmpeg:
 #      inputs:
 #        - path: rtsp://login:pass@ip:554/stream1
-#          roles:
+#          roles: # eveyr cam should have
 #            - audio
 #            - record
-#    onvif:
+#    onvif: # each camera should have
 #      host: ip
 #      port: 2020
 #      user: login

@@ -1,5 +1,6 @@
-apt update
+#!/bin/bash
 
+apt update
 apt install python3 python3-pip
 
-python3 ./main.py
+exec python3 lib/main.py "$@"

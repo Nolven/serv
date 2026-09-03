@@ -7,52 +7,36 @@ WireGuard - nothing else is exposed.
 - Target platform: Debian 13 (trixie), systemd, x86_64
 - Languages: Python 3.11+ and Bash. Pick by task: multi-step shell work - Bash
   script; YAML parsing, validation, templating - Python
-- Python deps: venv at `.venv/`, declared in `requirements.txt`
 - Every operation must be idempotent. Re-running a deploy on a converged host
   is a no-op and must exit 0
-- Validate the entire config before mutating anything. No partial application
+- Validate the entire config after generation
 
 # Components are independent
 No component may reference another component by name - not in code, not in
 config, not in a dependency list.
-
 If a task seems to require component A to know about component B, that is a
 registry problem. Do not hardcode the name - ask.
 
-# How the actual 
-
 # Project structure
 - /
-  - deploy.sh # entry point: bootstrap venv, exec main.py "$@"
-  - main.py # parse, validate, render, invoke each install.sh
-  - requirements.txt
-  - config.yaml # user-edited, gitignored, 0600
+  - deploy.sh         # entry point: bootstrap venv, exec main.py "$@"
+  - config.yaml       # user-edited, gitignored, 0600
 - lib/
-  - packages.sh # package installation abstraction
-  - common.sh # logging, idempotency helpers
-- build/ # generated configs
+  - main.py           # parse, validate, render, invoke each install.sh
+  - packages.sh       # package installation abstraction
+  - common.sh         # logging, idempotency helpers
+- build/              # generated configs
 - components/
   - <name>/
-    - install.sh # entry point; the only thing main.py calls
-    - defaults.yaml # every tunable, working defaults
-    - configure.py # optional helper, invoked by install.sh
-    - compose.yaml # if containerized
-    - files/ # templates and static files
-    - NOTES.md # research output
-
+    - files/          # any non-config files requied by component
+    - install.sh      # component-specific script (for example dependency, key installation, etc )
+    - configure.py    # entry point; component-specific config parser
+    - compose.yaml    # if containerized
+    - any additional configurational files required by the component
 
 `deploy.sh` stays dumb: create/activate the venv, install requirements,
 `exec python main.py "$@"`. If it grows a component loop, the boundary has
 slipped - that logic belongs in `main.py`.
-
-# How config reaches a component
-`main.py` merges the layers, resolves references and derived values, then
-writes a per-component JSON file to a temp dir and calls:
-
-    components/<name>/install.sh /path/to/<name>.json
-
-`install.sh` reads only that file. It never parses `config.yaml` itself and
-never reads another component's rendered config.
 
 # Code quality
 - Python: type hints on all signatures; `ruff check` and `ruff format` clean
@@ -69,7 +53,3 @@ There is no unit test suite. Verify only by:
 - `shellcheck` on all `*.sh`, `ruff check` on all Python
 
 Never run a real deploy against a live host to test a change.
-
-# Adding a component
-Use `/add-component <name>`. It sequences research, scaffolding, and review.
-The full contract is in `components/CLAUDE.md`.
