@@ -11,7 +11,7 @@ general:
         apex_domain: "noor.now"
         hostname: "noor"
         fileserver_root: /srv/share
-        stack_root: /stacks/survur     # where everything non-shared will exist
+        install: /stacks/survur     # where everything non-shared will exist
         ssh:
                 port: 1488 # lazy security from bots
         # generated_path: added in main.py call
