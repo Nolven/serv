@@ -11,6 +11,7 @@ general:
         apex_domain: "noor.now"
         hostname: "noor"
         fileserver_root: /srv/share
+        stack_root: /stacks/survur     # where everything non-shared will exist
         ssh:
                 port: 1488 # lazy security from bots
 
@@ -36,13 +37,13 @@ frigate:
                         # - "8554:8554" # RTSP feeds
                         - "8555:8555/tcp" # WebRTC over tcp
                         # - "8555:8555/udp" # WebRTC over udp
-                        
+
         # by default each cam has audio and record roles in ffmpeg section
         cams:
-#                name:
-#                        login: ""
-#                        password: ""
-#                        ip: 1.1.1.1
-#                        stream: "stream1"
-#                        detect: false
+               name:
+                       login: ""
+                       password: ""
+                       ip: 1.1.1.1
+                       stream: "stream1"
+                       detect: false
 
