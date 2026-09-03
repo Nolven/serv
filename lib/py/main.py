@@ -13,4 +13,4 @@ with open(ROOT / "config.yaml", "r") as file:
 
     if "frigate" in data:
         info("Frigate found")
-        frigate.configure()
+        frigate.configure(data["frigate"], data["general"])

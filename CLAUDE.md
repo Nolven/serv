@@ -19,19 +19,21 @@ registry problem. Do not hardcode the name - ask.
 
 # Project structure
 - /
-  - deploy.sh         # entry point: bootstrap venv, exec main.py "$@"
-  - config.yaml       # user-edited, gitignored, 0600
+  - deploy.sh           # entry point: bootstrap venv, exec main.py "$@"
+  - config.yaml         # user-edited, gitignored, 0600
 - lib/
-  - main.py           # parse, validate, render, invoke each install.sh
-  - packages.sh       # package installation abstraction
-  - common.sh         # logging, idempotency helpers
-- build/              # generated configs
+  - py/                 # python scripts
+    - component_name.py # entry point for component configuration
+    - main.py           # parse, validate, render, invoke each install.sh
+    - util python scripts
+  - sh/
+    - util bash scripts
+    - component_name.sh # necessary for component bash script
+- build/                # generated configs
 - components/
   - <name>/
-    - files/          # any non-config files requied by component
-    - install.sh      # component-specific script (for example dependency, key installation, etc )
-    - configure.py    # entry point; component-specific config parser
-    - compose.yaml    # if containerized
+    - files/            # any non-config files requied by component
+    - compose.yaml      # if containerized
     - any additional configurational files required by the component
 
 `deploy.sh` stays dumb: create/activate the venv, install requirements,
@@ -50,6 +52,7 @@ There is no unit test suite. Verify only by:
 - `./deploy.sh --check` - validates config and exits
 - `./deploy.sh --dry-run` - prints planned actions without executing
 - `./deploy.sh --generate` - generates configs into /build folder
+- `./deploy.sh --deploy` - generates configs into /build folder, installs components, and replaces default configs with generated after installation
 - `shellcheck` on all `*.sh`, `ruff check` on all Python
 
 Never run a real deploy against a live host to test a change.
