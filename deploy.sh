@@ -3,12 +3,17 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-if ! python3 -c "import venv" >/dev/null 2>&1; then
-    apt-get update -qq
-    apt-get install -y --no-install-recommends python3 python3-venv
-fi
+apt-get update -qq
+apt-get install -y --no-install-recommends python3 python3-venv
 
-if [[ ! -d .venv ]]; then
+# python3-venv alone isn't enough - Debian splits ensurepip support into the
+# version-pinned package (e.g. python3.13-venv), without which `python3 -m
+# venv` fails at creation time even though "import venv" already succeeds
+python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+apt-get install -y --no-install-recommends "python${python_version}-venv"
+
+if [[ ! -x .venv/bin/pip ]]; then
+    rm -rf .venv
     python3 -m venv .venv
 fi
 
