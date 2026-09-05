@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import importlib
 import shutil
 import subprocess
@@ -8,7 +9,7 @@ from types import ModuleType
 from typing import Any
 
 import yaml
-from utils import error, info, warn, write_yaml
+from utils import error, info, passthrough, set_log_file, warn, write_yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = ROOT / "config.yaml"
@@ -106,6 +107,28 @@ def ensure_bind_mounts(compose_path: Path, dest: Path) -> None:
             (dest / host_path[2:]).mkdir(parents=True, exist_ok=True)
 
 
+def run_logged(cmd: list[str], cwd: Path | None = None) -> None:
+    """Run cmd, streaming its combined output live and through utils' log tee.
+
+    Deliberately not subprocess.run(check=True) inheriting fd 1/2 directly -
+    that can't be captured into build/deploy.log portably (see tee_output).
+    """
+    proc = subprocess.Popen(
+        cmd,
+        cwd=cwd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    assert proc.stdout is not None
+    for line in proc.stdout:
+        passthrough(line)
+    proc.wait()
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd)
+
+
 def deploy_component(name: str, src: Path, dest: Path, force: bool = False) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for item in src.iterdir():
@@ -124,25 +147,50 @@ def deploy_component(name: str, src: Path, dest: Path, force: bool = False) -> N
         if force:
             cmd.append("--force")
         info(f"Running lib/sh/{name}.sh" + (" --force" if force else ""))
-        subprocess.run(cmd, check=True, cwd=ROOT)
+        run_logged(cmd, cwd=ROOT)
         ran_something = True
 
     if compose_path.exists():
-        subprocess.run(
-            ["bash", str(ROOT / "lib" / "sh" / "ensure_docker.sh")], check=True
-        )
+        run_logged(["bash", str(ROOT / "lib" / "sh" / "ensure_docker.sh")])
         ensure_bind_mounts(compose_path, dest)
         up_cmd = ["docker", "compose", "-f", str(compose_path), "up", "-d"]
         if force:
             up_cmd.append("--force-recreate")
         info(f"docker compose up -d ({dest})" + (" --force-recreate" if force else ""))
-        subprocess.run(up_cmd, check=True, cwd=dest)
+        run_logged(up_cmd, cwd=dest)
+
+        # "up -d" only prints compose's own status, never the container's own
+        # application log (e.g. frigate's one-time generated admin password) -
+        # dump it explicitly so it lands wherever our own output is captured
+        info(f"Container logs ({dest}):")
+        run_logged(
+            ["docker", "compose", "-f", str(compose_path), "logs", "--no-color"],
+            cwd=dest,
+        )
         ran_something = True
 
     if not ran_something:
         warn(
             f"{name} has no lib/sh/{name}.sh and no rendered compose.yaml; nothing to run"
         )
+
+
+@contextlib.contextmanager
+def tee_output(log_path: Path):
+    """Mirror info/warn/error/passthrough output into log_path as well.
+
+    Pure Python-level dual-write (via utils.set_log_file), not an OS-level fd
+    redirect - subprocess output only reaches the file because deploy_component
+    routes it through run_logged()/passthrough() rather than inheriting fd 1/2
+    directly, which is what makes this portable and independently testable.
+    """
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(log_path, "w", newline="\n") as f:
+        set_log_file(f)
+        try:
+            yield
+        finally:
+            set_log_file(None)
 
 
 def sync_common_config_folder(
@@ -273,37 +321,43 @@ def main() -> None:
                     )
         return
 
-    for name in enabled:
-        render = getattr(modules[name], "render", None)
-        if render is None:
-            warn(f"{name} has no render(); nothing generated")
-            continue
-        out = build_root / name
+    log_ctx = (
+        tee_output(build_root / "deploy.log")
+        if (args.deploy or args.force)
+        else contextlib.nullcontext()
+    )
+    with log_ctx:
+        for name in enabled:
+            render = getattr(modules[name], "render", None)
+            if render is None:
+                warn(f"{name} has no render(); nothing generated")
+                continue
+            out = build_root / name
+            try:
+                render(data[name], general, registry, out)
+            except ValueError as exc:
+                error(f"{name}: {exc}")
+                sys.exit(1)
+            info(f"Rendered {name} -> {out}")
+
+        registry_text = write_yaml(build_root / "registry.yaml", registry, mode=0o644)
+        info(f"Generated registry.yaml:\n{registry_text}")
+
+        if args.generate:
+            return
+
+        install_root = Path(general["install"])
+        for name in enabled:
+            src = build_root / name
+            if not src.exists():
+                continue
+            deploy_component(name, src, install_root / name, force=args.force)
+
         try:
-            render(data[name], general, registry, out)
+            sync_common_config_folder(general, registry)
         except ValueError as exc:
-            error(f"{name}: {exc}")
+            error(f"common_config_folder: {exc}")
             sys.exit(1)
-        info(f"Rendered {name} -> {out}")
-
-    registry_text = write_yaml(build_root / "registry.yaml", registry, mode=0o644)
-    info(f"Generated registry.yaml:\n{registry_text}")
-
-    if args.generate:
-        return
-
-    install_root = Path(general["install"])
-    for name in enabled:
-        src = build_root / name
-        if not src.exists():
-            continue
-        deploy_component(name, src, install_root / name, force=args.force)
-
-    try:
-        sync_common_config_folder(general, registry)
-    except ValueError as exc:
-        error(f"common_config_folder: {exc}")
-        sys.exit(1)
 
 
 if __name__ == "__main__":
