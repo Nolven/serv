@@ -42,7 +42,11 @@ def _ruleset(registry: dict[str, Any]) -> str:
         # scoped to our own table only - a global "flush ruleset" would also
         # wipe whatever iptables-nft has installed for wireguard's NAT/
         # FORWARD/DOCKER-USER rules (lib/sh/wireguard.sh), since both share
-        # the same nf_tables backend on modern Debian
+        # the same nf_tables backend on modern Debian.
+        # "add" before "flush" so this file is self-sufficient on its own -
+        # nftables.service reloads it directly on every boot (netfilter
+        # state doesn't survive a reboot), with no help from firewall.sh
+        "add table inet filter",
         "flush table inet filter",
         "",
         "table inet filter {",
