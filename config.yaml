@@ -4,25 +4,29 @@ components:
         - pihole
         - caddy
         - wireguard
-        - ddns          # must-have for static outside access
+        - ddns
 
 ##################################################################
 general:
         apex_domain: "noor.now"
         hostname: "noor"
+        host_ip: 10.100.0.1 # since connecting is possible only through wireguard; it is both hip and wg iface
         fileserver_root: /srv/share
         ssh:
                 port: 1488 # lazy security from bots
-
         build_path: ./build
         install: /stacks/survur     # where everything non-shared will exist
+        gen_firewall_rules: true
+        interface_name: eth0
 
 ##################################################################
 caddy:
         fileserver:
                 enable: true
-                root: "/srv/"
-                auto_https: true
+                auto_https: false
+                subdomain: fs
+                port: 2020
+                browsable: true
 
 ##################################################################
 frigate:
@@ -41,12 +45,43 @@ frigate:
                         - "8555:8555/tcp" # WebRTC over tcp
                         # - "8555:8555/udp" # WebRTC over udp
 
-        # by default each cam has audio and record roles in ffmpeg section
+        # every cam is enabled; by default each cam has audio and record
+        # roles in ffmpeg section. detect defaults false if omitted
+        # onvif_port is optional - omit to skip onvif for that camera
         cams:
                name:
-                       login: ""
-                       password: ""
+                       login: "asd"
+                       password: "asd"
                        ip: 1.1.1.1
                        stream: "stream1"
                        detect: false
+                       onvif_port: 8000
 
+##################################################################
+# will use my script with duckdns
+# https://github.com/Nolven/duckdns_keepup
+ddns:
+        bin_path: /usr/local/bin
+        domain: "33"
+        token: "321d12ed12"
+
+##################################################################
+pihole:
+        # for webui
+        subdomain:
+                port: 8081
+                name: pihole
+                redir: /admin
+        admin_pass: 12345         # USER, BE RESPONSIBLE - CHANGE
+        upstream_dns: 8.8.8.8
+
+
+###################################################################
+wireguard:
+        # interface_ip = general.host_ip
+        server_mask: 24
+        listen_port: 44444
+        net:
+                ipv4:
+                        ip_forward=1:
+        gen_post_up_post_down: true

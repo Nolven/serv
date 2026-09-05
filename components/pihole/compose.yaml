@@ -1,0 +1,13 @@
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:2026.07.0
+    restart: unless-stopped
+    env_file:
+      - pihole.env
+    environment:
+      TZ: UTC
+      # bridge networking needs this for DNS to work correctly
+      FTLCONF_dns_listeningMode: "ALL"
+    volumes:
+      - ./etc-pihole:/etc/pihole

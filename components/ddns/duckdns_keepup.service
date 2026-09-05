@@ -1,0 +1,18 @@
+[Unit]
+Description="Service that keeps a single domain of duckdns up to date with your ipv4"
+
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=python3 NEEDS_TO_BE_REPLACED
+# postpones the start until internet is really up (duckdns doesnt respond to pings)
+# ExecStartPre=/bin/sh -c 'until ping -c1 8.8.8.8; do sleep 1; done;'
+
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+Alias=duckdns.service
