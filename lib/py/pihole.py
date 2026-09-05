@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import yaml
@@ -9,9 +9,15 @@ DEFAULTS_DIR = ROOT / "components" / "pihole"
 
 
 def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
+    capabilities: dict[str, Any] = {
+        "config_file": {
+            "path": str(PurePosixPath(general["install"]) / "pihole" / "compose.yaml")
+        }
+    }
+
     subdomain = config.get("subdomain")
     if not subdomain:
-        return {}
+        return capabilities
     missing = [k for k in ("name", "port") if k not in subdomain]
     if missing:
         raise ValueError(
@@ -21,7 +27,8 @@ def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
     redir = subdomain.get("redir")
     if redir:
         route["redir"] = redir
-    return {"http_route": route}
+    capabilities["http_route"] = route
+    return capabilities
 
 
 def render(
@@ -61,7 +68,7 @@ def render(
     service["environment"]["FTLCONF_misc_dnsmasq_lines"] = (
         f"address=/{apex_domain}/{host_ip}"
     )
-    service["ports"] = ["53:53/tcp", "53:53/udp", f"{port}:8080/tcp"]
+    service["ports"] = ["53:53/tcp", "53:53/udp", f"{port}:{port}/tcp"]
 
     compose_text = write_yaml(out / "compose.yaml", compose, mode=0o644)
     info(f"Generated pihole compose:\n{compose_text}")

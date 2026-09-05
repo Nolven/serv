@@ -3,9 +3,19 @@ from typing import Any
 
 from utils import info, write_text
 
+# must match WG_CONF in lib/sh/wireguard.sh - wg0.conf lives outside
+# general.install and is only ever written by that script, never by render()
+WG_CONF_PATH = "/etc/wireguard/wg0.conf"
+
 
 def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
-    return {}
+    listen_port = config.get("listen_port")
+    if not listen_port:
+        raise ValueError("wireguard.listen_port is required")
+    return {
+        "firewall_rule": {"proto": "udp", "port": listen_port},
+        "config_file": {"path": WG_CONF_PATH},
+    }
 
 
 def render(

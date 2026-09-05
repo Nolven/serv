@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import yaml
@@ -12,15 +12,27 @@ REQUIRED_CAM_FIELDS = ("login", "password", "ip")
 
 
 def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
+    capabilities: dict[str, Any] = {
+        "config_file": {
+            "path": str(
+                PurePosixPath(general["install"]) / "frigate" / "config" / "config.yaml"
+            )
+        }
+    }
+
     subdomain = config.get("subdomain")
     if not subdomain:
-        return {}
+        return capabilities
     missing = [k for k in ("name", "port") if k not in subdomain]
     if missing:
         raise ValueError(
             f"frigate.subdomain missing required key(s): {', '.join(missing)}"
         )
-    return {"http_route": {"subdomain": subdomain["name"], "port": subdomain["port"]}}
+    capabilities["http_route"] = {
+        "subdomain": subdomain["name"],
+        "port": subdomain["port"],
+    }
+    return capabilities
 
 
 def _stream_url(name: str, cam: dict[str, Any]) -> str:

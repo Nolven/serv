@@ -9,6 +9,7 @@ components:
         - caddy
         - pihole
         - wireguard
+        - firewall
 
 ##################################################################
 general:
@@ -16,11 +17,20 @@ general:
         hostname: "myhost"                # this host's name
         fileserver_root: /srv/share
         ssh:
-                port: 22                  # required
+                port: 22                  # required - also opened on the WAN by the firewall component (see below)
 
         build_path: ./build               # required - where --generate writes rendered configs
         install: /stacks/example          # required - where everything non-shared will exist on the target host
         host_ip: 10.13.13.1               # required by pihole - the IP peers should use to reach this host (typically its WireGuard address)
+
+        # optional - one folder of symlinks to every component's "main" config
+        # file, for convenient inspection/editing. Only set up during
+        # --deploy (the targets don't exist yet under --generate). Not every
+        # component has one - see each component's config_file declaration
+        # (currently: caddy, frigate, pihole, wireguard, firewall).
+        common_config_folder:
+                enable: true
+                path: /stacks/cfg
 
 ##################################################################
 # installed via the official apt repo (lib/sh/caddy.sh), not docker.
@@ -106,3 +116,21 @@ pihole:
 wireguard:
         server_mask: 24                    # required
         listen_port: 44444                 # required - forward this UDP port from your router; outside this tool's scope
+                                            # also declares a firewall_rule (udp/listen_port) so the firewall
+                                            # component opens it on the WAN - that's how the tunnel gets reached
+                                            # in the first place
+
+##################################################################
+# installed via the apt package (lib/sh/firewall.sh), not docker. nftables
+# INPUT policy is drop; the wg0 interface is trusted entirely (nothing
+# reachable only over the tunnel - frigate, caddy, pihole - needs its own
+# rule). The only ports opened on the WAN are:
+#   - whatever components declare a firewall_rule capability (currently just
+#     wireguard's own listen_port, so the tunnel can be reached at all)
+#   - general.ssh.port (kept open directly, not tunnel-only - see CLAUDE.md)
+# Re-running --generate/--deploy re-renders the whole ruleset from the
+# current registry every time - it isn't hand-edited like wg0.conf.
+firewall:
+        nft_file_path: /etc/nftables.conf # required - where the generated ruleset is installed. If not
+                                           # the default nftables.service path, a systemd override is added so
+                                           # the service still loads it.

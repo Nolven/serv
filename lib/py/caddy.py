@@ -1,11 +1,12 @@
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from utils import info, write_text
 
 
 def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
-    return {}
+    path = str(PurePosixPath(general["install"]) / "caddy" / "Caddyfile")
+    return {"config_file": {"path": path}}
 
 
 def _fileserver_block(config: dict[str, Any], general: dict[str, Any]) -> list[str]:

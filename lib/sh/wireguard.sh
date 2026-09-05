@@ -39,8 +39,8 @@ else
         echo "[Interface]"
         cat "$INTERFACE_STAGED"
         echo "PrivateKey = $(cat "$WG_DIR/server_private.key")"
-        echo "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o $lan_iface -j MASQUERADE"
-        echo "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o $lan_iface -j MASQUERADE"
+        echo "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o $lan_iface -j MASQUERADE; iptables -N DOCKER-USER 2>/dev/null || true; iptables -I DOCKER-USER 1 -i %i -j ACCEPT"
+        echo "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o $lan_iface -j MASQUERADE; iptables -D DOCKER-USER -i %i -j ACCEPT || true"
     } > "$WG_CONF"
     chmod 600 "$WG_CONF"
 

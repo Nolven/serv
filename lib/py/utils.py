@@ -4,9 +4,18 @@ from typing import Any
 
 import yaml
 
-def info(msg: str) -> None: print(f"[INFO] {msg}")
-def warn(msg: str) -> None: print(f"[WARN] {msg}")
-def error(msg: str) -> None: print(f"[ERROR] {msg}", file=sys.stderr)
+
+def info(msg: str) -> None:
+    print(f"[INFO] {msg}")
+
+
+def warn(msg: str) -> None:
+    print(f"[WARN] {msg}")
+
+
+def error(msg: str) -> None:
+    print(f"[ERROR] {msg}", file=sys.stderr)
+
 
 def write_yaml(path: Path, data: dict[str, Any], mode: int = 0o644) -> str:
     path.parent.mkdir(parents=True, exist_ok=True)

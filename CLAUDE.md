@@ -1,7 +1,11 @@
 # Project overview
 Automated server deployment driven by a single `config.yaml` that the user edits
-before running. Target is a machine on the local network. The only ingress is
-WireGuard - nothing else is exposed.
+before running. Target is a machine on the local network. WireGuard is the
+ingress for every proxied/internal service - the firewall trusts the wg0
+interface entirely, so nothing behind it needs its own opening. SSH
+(`general.ssh.port`) is the one exception and stays reachable directly from
+the WAN too: this targets a home server behind a router with only default
+ports forwarded, so the exposure is considered acceptable.
 
 # General guidelines
 - Target platform: Debian 13 (trixie), systemd, x86_64
@@ -37,6 +41,19 @@ never by naming each other directly.
   - `http_route: {subdomain: str, port: int, redir?: str}` - an HTTP service
     a reverse proxy may expose. `redir`, if present, is a path (e.g.
     `/admin`) that bare `/` should redirect to.
+  - `firewall_rule: {proto: "tcp" | "udp", port: int}` - a port that must be
+    reachable from outside the host, on the public interface, independent of
+    the WireGuard tunnel. The firewall trusts the wg0 interface entirely, so
+    only declare this for something that must work before/outside the
+    tunnel exists (e.g. WireGuard's own listen port) - not for services only
+    reachable over the tunnel.
+  - `config_file: {path: str}` - the absolute, on-host path to a config file
+    worth exposing for convenient inspection/editing. `path` is the file's
+    real final location (e.g. under `general.install/<name>/...`, or a fixed
+    system path like `/etc/wireguard/wg0.conf`) - never a `build/` path.
+    Consumed only by `main.py`'s `general.common_config_folder` step, which
+    symlinks it in; not every component needs to declare one (skip it for
+    anything with no single config worth surfacing).
 
 # Project structure
 - /

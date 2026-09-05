@@ -140,6 +140,47 @@ def deploy_component(name: str, src: Path, dest: Path) -> None:
         )
 
 
+def sync_common_config_folder(
+    general: dict[str, Any], registry: dict[str, Any]
+) -> None:
+    """Symlink every declared config_file capability into one folder.
+
+    Runs after deploy_component() so targets already exist on disk; targets
+    are absolute host paths declared by each component, never build/ paths.
+    """
+    common = general.get("common_config_folder") or {}
+    if not common.get("enable", False):
+        return
+
+    folder_path = common.get("path")
+    if not folder_path:
+        raise ValueError(
+            "general.common_config_folder.path is required when enable is true"
+        )
+
+    folder = Path(folder_path)
+    folder.mkdir(parents=True, exist_ok=True)
+
+    for name in sorted(registry):
+        config_file = registry[name].get("config_file")
+        if not config_file:
+            continue
+        target = Path(config_file["path"])
+        link = folder / name
+
+        if link.is_symlink():
+            if link.readlink() == target:
+                continue
+            link.unlink()
+        elif link.exists():
+            raise ValueError(
+                f"{link} already exists and is not a symlink - refusing to overwrite"
+            )
+
+        link.symlink_to(target)
+        info(f"Linked {link} -> {target}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Config-driven server deploy orchestrator"
@@ -195,6 +236,24 @@ def main() -> None:
             if not script.exists() and not compose_source.exists():
                 info(f"[dry-run] {name} has no lib/sh/{name}.sh or compose.yaml source")
         info(f"[dry-run] would write {build_root / 'registry.yaml'}")
+
+        common = general.get("common_config_folder") or {}
+        if common.get("enable", False):
+            folder_path = common.get("path")
+            if not folder_path:
+                info(
+                    "[dry-run] general.common_config_folder.enable is true but "
+                    "path is missing"
+                )
+            else:
+                for name in sorted(registry):
+                    config_file = registry[name].get("config_file")
+                    if not config_file:
+                        continue
+                    info(
+                        f"[dry-run] would link {Path(folder_path) / name} -> "
+                        f"{config_file['path']}"
+                    )
         return
 
     for name in enabled:
@@ -222,6 +281,12 @@ def main() -> None:
         if not src.exists():
             continue
         deploy_component(name, src, install_root / name)
+
+    try:
+        sync_common_config_folder(general, registry)
+    except ValueError as exc:
+        error(f"common_config_folder: {exc}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

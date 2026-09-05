@@ -5,25 +5,30 @@ components:
         - caddy
         - wireguard
         - ddns
+        - firewall
 
 ##################################################################
 general:
         apex_domain: "noor.now"
         hostname: "noor"
-        host_ip: 10.100.0.1 # since connecting is possible only through wireguard; it is both hip and wg iface
+        host_ip: 10.100.0.1         # since connection is possible only through wireguard; it's both hip and wg iface
+
         fileserver_root: /srv/share
+
         ssh:
-                port: 1488 # lazy security from bots
+                port: 1488          # lazy security from bots
+
         build_path: ./build
         install: /stacks/survur     # where everything non-shared will exist
-        gen_firewall_rules: true
-        interface_name: eth0
+
+        common_config_folder:       # folder with symlinks to each config (not compose)
+                enable: true
+                path: /stacks/cfg
 
 ##################################################################
 caddy:
         fileserver:
                 enable: true
-                auto_https: false
                 subdomain: fs
                 port: 2020
                 browsable: true
@@ -75,13 +80,12 @@ pihole:
         admin_pass: 12345         # USER, BE RESPONSIBLE - CHANGE
         upstream_dns: 8.8.8.8
 
-
 ###################################################################
 wireguard:
         # interface_ip = general.host_ip
         server_mask: 24
         listen_port: 44444
-        net:
-                ipv4:
-                        ip_forward=1:
-        gen_post_up_post_down: true
+
+###################################################################
+firewall: # nftables
+        nft_file_path: /stacks/cfg/nftables.conf
