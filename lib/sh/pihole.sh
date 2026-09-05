@@ -7,6 +7,11 @@ DROPIN_DIR="/etc/systemd/resolved.conf.d"
 DROPIN_FILE="$DROPIN_DIR/pihole-stub-listener.conf"
 DESIRED=$'[Resolve]\nDNSStubListener=no\n'
 
+if ! systemctl cat systemd-resolved.service >/dev/null 2>&1; then
+    echo "[INFO] systemd-resolved is not present on this host - nothing to disable, port 53 should already be free"
+    exit 0
+fi
+
 mkdir -p "$DROPIN_DIR"
 
 if [[ ! -f "$DROPIN_FILE" ]] || [[ "$(cat "$DROPIN_FILE")" != "$DESIRED" ]]; then
