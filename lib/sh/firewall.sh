@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEST="${1:?usage: firewall.sh <staged-config-dir>}"
+DEST="${1:?usage: firewall.sh <staged-config-dir> [--force]}"
+FORCE=false
+[[ "${2:-}" == "--force" ]] && FORCE=true
 RULESET_STAGED="$DEST/nftables.conf"
 INSTALL_PATH_FILE="$DEST/install_path"
 OVERRIDE_DIR="/etc/systemd/system/nftables.service.d"
@@ -24,7 +26,7 @@ nft -c -f "$RULESET_STAGED"
 mkdir -p "$(dirname "$install_path")"
 
 changed=false
-if ! cmp -s "$RULESET_STAGED" "$install_path" 2>/dev/null; then
+if [[ "$FORCE" == true ]] || ! cmp -s "$RULESET_STAGED" "$install_path" 2>/dev/null; then
     install -m 0640 "$RULESET_STAGED" "$install_path"
     changed=true
     echo "[INFO] installed $install_path"

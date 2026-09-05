@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEST="${1:?usage: ssh.sh <staged-config-dir>}"
+DEST="${1:?usage: ssh.sh <staged-config-dir> [--force]}"
+FORCE=false
+[[ "${2:-}" == "--force" ]] && FORCE=true
 CONF_STAGED="$DEST/sshd_serv.conf"
 CONF_INSTALLED="/etc/ssh/sshd_config.d/99-serv.conf"
 
@@ -15,7 +17,7 @@ if ! command -v sshd >/dev/null 2>&1; then
     apt-get install -y --no-install-recommends openssh-server >/dev/null
 fi
 
-if cmp -s "$CONF_STAGED" "$CONF_INSTALLED" 2>/dev/null; then
+if [[ "$FORCE" != true ]] && cmp -s "$CONF_STAGED" "$CONF_INSTALLED" 2>/dev/null; then
     echo "[INFO] sshd config already up to date"
     exit 0
 fi

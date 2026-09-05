@@ -106,7 +106,7 @@ def ensure_bind_mounts(compose_path: Path, dest: Path) -> None:
             (dest / host_path[2:]).mkdir(parents=True, exist_ok=True)
 
 
-def deploy_component(name: str, src: Path, dest: Path) -> None:
+def deploy_component(name: str, src: Path, dest: Path, force: bool = False) -> None:
     dest.mkdir(parents=True, exist_ok=True)
     for item in src.iterdir():
         target = dest / item.name
@@ -120,8 +120,11 @@ def deploy_component(name: str, src: Path, dest: Path) -> None:
     ran_something = False
 
     if script.exists():
-        info(f"Running lib/sh/{name}.sh")
-        subprocess.run(["bash", str(script), str(dest)], check=True, cwd=ROOT)
+        cmd = ["bash", str(script), str(dest)]
+        if force:
+            cmd.append("--force")
+        info(f"Running lib/sh/{name}.sh" + (" --force" if force else ""))
+        subprocess.run(cmd, check=True, cwd=ROOT)
         ran_something = True
 
     if compose_path.exists():
@@ -129,12 +132,11 @@ def deploy_component(name: str, src: Path, dest: Path) -> None:
             ["bash", str(ROOT / "lib" / "sh" / "ensure_docker.sh")], check=True
         )
         ensure_bind_mounts(compose_path, dest)
-        info(f"docker compose up -d ({dest})")
-        subprocess.run(
-            ["docker", "compose", "-f", str(compose_path), "up", "-d"],
-            check=True,
-            cwd=dest,
-        )
+        up_cmd = ["docker", "compose", "-f", str(compose_path), "up", "-d"]
+        if force:
+            up_cmd.append("--force-recreate")
+        info(f"docker compose up -d ({dest})" + (" --force-recreate" if force else ""))
+        subprocess.run(up_cmd, check=True, cwd=dest)
         ran_something = True
 
     if not ran_something:
@@ -200,6 +202,17 @@ def main() -> None:
         "--deploy",
         action="store_true",
         help="generate, install, and (re)start components",
+    )
+    group.add_argument(
+        "--force",
+        action="store_true",
+        help=(
+            "like --deploy, but unconditionally re-applies every component's "
+            "config (restarts services / recreates containers even if nothing "
+            "changed). wireguard is handled specially: an existing wg0.conf is "
+            "updated in place rather than left untouched, but its PrivateKey "
+            "and peers are preserved, never regenerated"
+        ),
     )
     args = parser.parse_args()
 
@@ -284,7 +297,7 @@ def main() -> None:
         src = build_root / name
         if not src.exists():
             continue
-        deploy_component(name, src, install_root / name)
+        deploy_component(name, src, install_root / name, force=args.force)
 
     try:
         sync_common_config_folder(general, registry)

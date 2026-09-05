@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEST="${1:?usage: caddy.sh <staged-config-dir>}"
+DEST="${1:?usage: caddy.sh <staged-config-dir> [--force]}"
+FORCE=false
+[[ "${2:-}" == "--force" ]] && FORCE=true
 CADDYFILE_STAGED="$DEST/Caddyfile"
 CADDYFILE_INSTALLED="/etc/caddy/Caddyfile"
 
@@ -25,7 +27,7 @@ fi
 mkdir -p "$(dirname "$CADDYFILE_INSTALLED")"
 
 changed=false
-if ! cmp -s "$CADDYFILE_STAGED" "$CADDYFILE_INSTALLED" 2>/dev/null; then
+if [[ "$FORCE" == true ]] || ! cmp -s "$CADDYFILE_STAGED" "$CADDYFILE_INSTALLED" 2>/dev/null; then
     install -m 0644 "$CADDYFILE_STAGED" "$CADDYFILE_INSTALLED"
     changed=true
     echo "[INFO] installed $CADDYFILE_INSTALLED"

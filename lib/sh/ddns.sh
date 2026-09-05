@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEST="${1:?usage: ddns.sh <staged-config-dir>}"
+DEST="${1:?usage: ddns.sh <staged-config-dir> [--force]}"
+FORCE=false
+[[ "${2:-}" == "--force" ]] && FORCE=true
 SERVICE_UNIT="duckdns_keepup.service"
 SCRIPT_NAME="duckdns_keepup.py"
 SYSTEMD_DIR="/etc/systemd/system"
@@ -27,13 +29,13 @@ mkdir -p "$(dirname "$script_path")"
 
 changed=false
 
-if ! cmp -s "$SCRIPT_STAGED" "$script_path" 2>/dev/null; then
+if [[ "$FORCE" == true ]] || ! cmp -s "$SCRIPT_STAGED" "$script_path" 2>/dev/null; then
     install -m 0600 "$SCRIPT_STAGED" "$script_path"
     changed=true
     echo "[INFO] installed $script_path"
 fi
 
-if ! cmp -s "$SERVICE_STAGED" "$SYSTEMD_DIR/$SERVICE_UNIT" 2>/dev/null; then
+if [[ "$FORCE" == true ]] || ! cmp -s "$SERVICE_STAGED" "$SYSTEMD_DIR/$SERVICE_UNIT" 2>/dev/null; then
     install -m 0644 "$SERVICE_STAGED" "$SYSTEMD_DIR/$SERVICE_UNIT"
     changed=true
     echo "[INFO] installed $SYSTEMD_DIR/$SERVICE_UNIT"
