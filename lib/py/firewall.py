@@ -33,17 +33,17 @@ def _rules_from_registry(registry: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _ruleset(general: dict[str, Any], registry: dict[str, Any]) -> str:
+def _ruleset(registry: dict[str, Any]) -> str:
     wan_rules = _rules_from_registry(registry)
-
-    ssh_port = general.get("ssh", {}).get("port")
-    if ssh_port:
-        wan_rules.append(f"\t\ttcp dport {ssh_port} accept # ssh")
 
     lines = [
         "#!/usr/sbin/nft -f",
         "",
-        "flush ruleset",
+        # scoped to our own table only - a global "flush ruleset" would also
+        # wipe whatever iptables-nft has installed for wireguard's NAT/
+        # FORWARD/DOCKER-USER rules (lib/sh/wireguard.sh), since both share
+        # the same nf_tables backend on modern Debian
+        "flush table inet filter",
         "",
         "table inet filter {",
         "\tchain input {",
@@ -78,9 +78,7 @@ def render(
     if not nft_file_path:
         raise ValueError("firewall.nft_file_path is required")
 
-    ruleset_text = write_text(
-        out / "nftables.conf", _ruleset(general, registry), mode=0o644
-    )
+    ruleset_text = write_text(out / "nftables.conf", _ruleset(registry), mode=0o644)
     info(f"Generated nftables ruleset:\n{ruleset_text}")
 
     write_text(out / "install_path", f"{nft_file_path}\n", mode=0o644)

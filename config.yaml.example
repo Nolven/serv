@@ -9,6 +9,7 @@ components:
         - caddy
         - pihole
         - wireguard
+        - ssh
         - firewall
 
 ##################################################################
@@ -16,8 +17,6 @@ general:
         apex_domain: "example.com"        # your domain
         hostname: "myhost"                # this host's name
         fileserver_root: /srv/share
-        ssh:
-                port: 22                  # required - also opened on the WAN by the firewall component (see below)
 
         build_path: ./build               # required - where --generate writes rendered configs
         install: /stacks/example          # required - where everything non-shared will exist on the target host
@@ -121,13 +120,25 @@ wireguard:
                                             # in the first place
 
 ##################################################################
+# writes a drop-in at /etc/ssh/sshd_config.d/99-serv.conf (Debian's default
+# sshd_config Includes that directory first, so this overrides the stock
+# settings below it without touching sshd_config itself). Validated with
+# `sshd -t` before ever restarting ssh - reverts and refuses to restart if
+# the new config is invalid, so a bad value here can't lock you out.
+# Declares a firewall_rule like wireguard does, so the firewall component
+# opens this port on the WAN too - nothing hardcoded between the two.
+ssh:
+        port: 22                          # required - change together with the firewall in the same deploy
+        permit_root_login: "no"           # yes | no | prohibit-password | forced-commands-only
+        password_authentication: false    # keep false unless you haven't set up a key yet
+
+##################################################################
 # installed via the apt package (lib/sh/firewall.sh), not docker. nftables
 # INPUT policy is drop; the wg0 interface is trusted entirely (nothing
 # reachable only over the tunnel - frigate, caddy, pihole - needs its own
-# rule). The only ports opened on the WAN are:
-#   - whatever components declare a firewall_rule capability (currently just
-#     wireguard's own listen_port, so the tunnel can be reached at all)
-#   - general.ssh.port (kept open directly, not tunnel-only - see CLAUDE.md)
+# rule). The only ports opened on the WAN are whatever components declare a
+# firewall_rule capability (currently: wireguard's listen_port, ssh's port -
+# both handled identically, nothing ssh-specific hardcoded here).
 # Re-running --generate/--deploy re-renders the whole ruleset from the
 # current registry every time - it isn't hand-edited like wg0.conf.
 firewall:

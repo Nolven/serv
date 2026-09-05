@@ -2,10 +2,11 @@
 Automated server deployment driven by a single `config.yaml` that the user edits
 before running. Target is a machine on the local network. WireGuard is the
 ingress for every proxied/internal service - the firewall trusts the wg0
-interface entirely, so nothing behind it needs its own opening. SSH
-(`general.ssh.port`) is the one exception and stays reachable directly from
-the WAN too: this targets a home server behind a router with only default
-ports forwarded, so the exposure is considered acceptable.
+interface entirely, so nothing behind it needs its own opening. SSH (the
+`ssh` component) is kept reachable directly from the WAN too, like WireGuard
+itself - both declare a `firewall_rule` like any other component, nothing
+hardcoded in `firewall.py`. This targets a home server behind a router with
+only default ports forwarded, so the exposure is considered acceptable.
 
 # General guidelines
 - Target platform: Debian 13 (trixie), systemd, x86_64

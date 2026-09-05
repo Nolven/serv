@@ -16,6 +16,13 @@ if ! command -v wg >/dev/null 2>&1; then
     apt-get install -y --no-install-recommends wireguard >/dev/null
 fi
 
+# not pulled in by the wireguard package, but PostUp/PostDown (below) shell
+# out to it directly
+if ! command -v iptables >/dev/null 2>&1; then
+    echo "[INFO] installing iptables"
+    apt-get install -y --no-install-recommends iptables >/dev/null
+fi
+
 if [[ -f "$WG_CONF" ]]; then
     echo "[INFO] $WG_CONF already exists - leaving it untouched (peers may have been added since)"
 else

@@ -125,6 +125,9 @@ def deploy_component(name: str, src: Path, dest: Path) -> None:
         ran_something = True
 
     if compose_path.exists():
+        subprocess.run(
+            ["bash", str(ROOT / "lib" / "sh" / "ensure_docker.sh")], check=True
+        )
         ensure_bind_mounts(compose_path, dest)
         info(f"docker compose up -d ({dest})")
         subprocess.run(
@@ -232,6 +235,7 @@ def main() -> None:
                     f"[dry-run] would run lib/sh/{name}.sh against {install_root / name}"
                 )
             if compose_source.exists():
+                info("[dry-run] would ensure docker is installed")
                 info(f"[dry-run] would docker compose up -d in {install_root / name}")
             if not script.exists() and not compose_source.exists():
                 info(f"[dry-run] {name} has no lib/sh/{name}.sh or compose.yaml source")

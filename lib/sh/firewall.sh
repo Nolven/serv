@@ -19,6 +19,11 @@ if ! command -v nft >/dev/null 2>&1; then
     apt-get install -y --no-install-recommends nftables >/dev/null
 fi
 
+# the ruleset flushes only this table (not "flush ruleset") - safe even
+# alongside iptables-nft's tables for wireguard/docker - but that means the
+# table must already exist before it can be flushed/checked at all
+nft list table inet filter >/dev/null 2>&1 || nft add table inet filter
+
 nft -c -f "$RULESET_STAGED"
 
 mkdir -p "$(dirname "$install_path")"

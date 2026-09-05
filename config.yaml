@@ -5,6 +5,7 @@ components:
         - caddy
         - wireguard
         - ddns
+        - ssh
         - firewall
 
 ##################################################################
@@ -14,9 +15,6 @@ general:
         host_ip: 10.100.0.1         # since connection is possible only through wireguard; it's both hip and wg iface
 
         fileserver_root: /srv/share
-
-        ssh:
-                port: 1488          # lazy security from bots
 
         build_path: ./build
         install: /stacks/survur     # where everything non-shared will exist
@@ -85,6 +83,12 @@ wireguard:
         # interface_ip = general.host_ip
         server_mask: 24
         listen_port: 44444
+
+###################################################################
+ssh:
+        port: 1488          # lazy security from bots
+        permit_root_login: "yes"
+        password_authentication: true
 
 ###################################################################
 firewall: # nftables
