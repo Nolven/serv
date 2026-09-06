@@ -17,7 +17,15 @@ def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
             "path": str(
                 PurePosixPath(general["install"]) / "frigate" / "config" / "config.yaml"
             )
-        }
+        },
+        "post_deploy_note": {
+            "message": (
+                "Frigate's web UI password can't be set in config.yaml - it's "
+                "randomly generated on first boot and printed once to the "
+                "container's own logs. Find it with: "
+                "grep -i password build/deploy.log (or: docker logs frigate)"
+            )
+        },
     }
 
     subdomain = config.get("subdomain")

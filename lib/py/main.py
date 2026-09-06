@@ -234,6 +234,29 @@ def sync_common_config_folder(
         info(f"Linked {link} -> {target}")
 
 
+def print_post_deploy_reminders(registry: dict[str, Any]) -> None:
+    """Print WAN port-forwarding and post_deploy_note reminders, if any.
+
+    Both are derived purely from the registry - never branches on a literal
+    component name, so any component gains a reminder just by declaring the
+    relevant capability.
+    """
+    wan_ports = [
+        rule for caps in registry.values() if (rule := caps.get("firewall_rule"))
+    ]
+    if wan_ports:
+        ports = ", ".join(f"{r['proto']}/{r['port']}" for r in wan_ports)
+        info(
+            "REMINDER: forward the following port(s) from your router's WAN "
+            f"side to this host, if you haven't already: {ports}"
+        )
+
+    for name in sorted(registry):
+        note = registry[name].get("post_deploy_note")
+        if note:
+            info(f"REMINDER ({name}): {note['message']}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Config-driven server deploy orchestrator"
@@ -358,6 +381,8 @@ def main() -> None:
         except ValueError as exc:
             error(f"common_config_folder: {exc}")
             sys.exit(1)
+
+        print_post_deploy_reminders(registry)
 
 
 if __name__ == "__main__":

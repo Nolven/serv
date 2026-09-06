@@ -55,6 +55,16 @@ never by naming each other directly.
     Consumed only by `main.py`'s `general.common_config_folder` step, which
     symlinks it in; not every component needs to declare one (skip it for
     anything with no single config worth surfacing).
+  - `post_deploy_note: {message: str}` - a static, human-readable reminder
+    about something manual the user still needs to do that isn't otherwise
+    derivable from the registry (e.g. a one-time generated password to go
+    retrieve). `message` must be self-contained (no other capability data
+    needed to make sense of it). Consumed only by `main.py`, which prints
+    every declared note once at the end of a `--deploy`/`--force` run -
+    never during `--generate`/`--check`/`--dry-run`, since nothing has
+    actually run yet. Don't declare this for anything derivable from other
+    capabilities already in the registry (e.g. WAN port-forwarding reminders
+    come from `firewall_rule` generically, not from a note).
 
 # Project structure
 - /
