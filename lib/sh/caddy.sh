@@ -39,7 +39,12 @@ if [[ "$FORCE" == true ]] || ! cmp -s "$CADDYFILE_STAGED" "$CADDYFILE_INSTALLED"
     echo "[INFO] installed $CADDYFILE_INSTALLED"
 fi
 
-if [[ "$changed" == true ]]; then
+if [[ "$changed" == true ]] && ! systemctl is-active --quiet caddy; then
+    # only when caddy isn't already running - "caddy validate" provisions a
+    # full temporary instance (admin API included), which hangs trying to
+    # bind the same default admin socket (localhost:2019) the live systemd
+    # instance already holds. Once caddy is running, "systemctl reload"
+    # below validates via that instance's own /load endpoint instead.
     caddy validate --config "$CADDYFILE_INSTALLED" --adapter caddyfile
 fi
 

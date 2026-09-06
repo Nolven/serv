@@ -36,7 +36,7 @@ frigate:
                 name: "cams"
                 port: 8971
         docker:
-                shm_size: "180m"
+                shm_size: "187m"
                 volumes:
                         - ./config:/config
                         - ./storage:/media/frigate
