@@ -37,8 +37,8 @@ detect:
   height: 720
   fps: 5
   min_initialized: 5
-  min_disappeared: 25
-  station:
+  max_disappeared: 25
+  stationary:
     classifier: true
     interval: 50
     threshold: 50
