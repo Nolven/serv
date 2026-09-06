@@ -24,7 +24,7 @@ def _fileserver_block(config: dict[str, Any], general: dict[str, Any]) -> list[s
     if "fileserver_root" not in general:
         raise ValueError("general.fileserver_root is required")
 
-    address = f"{fileserver['subdomain']}.{general['apex_domain']}:{fileserver['port']}"
+    address = f"http://{fileserver['subdomain']}.{general['apex_domain']}:{fileserver['port']}"
     file_server = (
         "file_server browse" if fileserver.get("browsable", False) else "file_server"
     )
