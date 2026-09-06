@@ -33,16 +33,15 @@ general:
 
 ##################################################################
 # installed via the official apt repo (lib/sh/caddy.sh), not docker.
-# TLS is off for now - only WireGuard reaches this host, and pihole (not
-# wired up yet) will eventually resolve *.example.com to it.
+# TLS is off for now - only WireGuard reaches this host, and pihole resolves
+# *.example.com to it.
 # reverse-proxy site blocks are generated automatically for every
 # component that declares an http_route capability (e.g. frigate) - not
 # user-configurable here.
 caddy:
         fileserver:
                 enable: true
-                subdomain: fs              # required - reachable at fs.<general.apex_domain>:<port> until pihole exists
-                port: 2020                 # required - dedicated port, bypasses DNS-based routing for now
+                subdomain: fs              # required - reachable at fs.<general.apex_domain>, same as any other subdomain
                 browsable: true            # directory listing on/off
                 # root is general.fileserver_root, not set here
 

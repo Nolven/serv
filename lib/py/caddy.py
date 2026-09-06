@@ -14,17 +14,14 @@ def _fileserver_block(config: dict[str, Any], general: dict[str, Any]) -> list[s
     if not fileserver.get("enable", False):
         return []
 
-    missing = [k for k in ("subdomain", "port") if k not in fileserver]
-    if missing:
-        raise ValueError(
-            f"caddy.fileserver missing required key(s): {', '.join(missing)}"
-        )
+    if "subdomain" not in fileserver:
+        raise ValueError("caddy.fileserver missing required key(s): subdomain")
     if "apex_domain" not in general:
         raise ValueError("general.apex_domain is required")
     if "fileserver_root" not in general:
         raise ValueError("general.fileserver_root is required")
 
-    address = f"http://{fileserver['subdomain']}.{general['apex_domain']}:{fileserver['port']}"
+    address = f"http://{fileserver['subdomain']}.{general['apex_domain']}"
     file_server = (
         "file_server browse" if fileserver.get("browsable", False) else "file_server"
     )

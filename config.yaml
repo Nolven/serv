@@ -28,7 +28,6 @@ caddy:
         fileserver:
                 enable: true
                 subdomain: fs
-                port: 2020
                 browsable: true
 
 ##################################################################
