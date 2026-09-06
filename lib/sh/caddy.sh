@@ -6,10 +6,16 @@ FORCE=false
 [[ "${2:-}" == "--force" ]] && FORCE=true
 CADDYFILE_STAGED="$DEST/Caddyfile"
 CADDYFILE_INSTALLED="/etc/caddy/Caddyfile"
+FILESERVER_ROOT_FILE="$DEST/fileserver_root"
 
 if [[ ! -f "$CADDYFILE_STAGED" ]]; then
     echo "[ERROR] $DEST is missing Caddyfile - run --generate first" >&2
     exit 1
+fi
+
+if [[ -f "$FILESERVER_ROOT_FILE" ]]; then
+    fileserver_root=$(cat "$FILESERVER_ROOT_FILE")
+    mkdir -p "$fileserver_root"
 fi
 
 if ! command -v caddy >/dev/null 2>&1; then

@@ -75,3 +75,8 @@ def render(
     text = "\n".join(lines).rstrip("\n") + "\n"
     caddyfile_text = write_text(out / "Caddyfile", text, mode=0o644)
     info(f"Generated Caddyfile:\n{caddyfile_text}")
+
+    if config.get("fileserver", {}).get("enable", False):
+        write_text(
+            out / "fileserver_root", f"{general['fileserver_root']}\n", mode=0o644
+        )
