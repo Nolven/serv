@@ -54,7 +54,7 @@ def _reverse_proxy_blocks(
         missing = [k for k in ("subdomain", "port") if k not in route]
         if missing:
             raise ValueError(f"{name}: http_route missing key(s): {', '.join(missing)}")
-        address = f"{route['subdomain']}.{general['apex_domain']}"
+        address = f"http://{route['subdomain']}.{general['apex_domain']}"
         block = [f"{address} {{"]
         redir = route.get("redir")
         if redir:
