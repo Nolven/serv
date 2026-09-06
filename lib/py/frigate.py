@@ -1,5 +1,6 @@
 from pathlib import Path, PurePosixPath
 from typing import Any
+from urllib.parse import quote
 
 import yaml
 from utils import info, write_yaml
@@ -50,7 +51,9 @@ def _stream_url(name: str, cam: dict[str, Any]) -> str:
             f"frigate.cams.{name} missing required key(s): {', '.join(missing)}"
         )
     stream = cam.get("stream", "stream1")
-    return f"rtsp://{cam['login']}:{cam['password']}@{cam['ip']}:{RTSP_PORT}/{stream}"
+    login = quote(str(cam["login"]), safe="")
+    password = quote(str(cam["password"]), safe="")
+    return f"rtsp://{login}:{password}@{cam['ip']}:{RTSP_PORT}/{stream}"
 
 
 def _build_frigate_config(config: dict[str, Any]) -> dict[str, Any]:
