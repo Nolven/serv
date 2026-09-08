@@ -12,7 +12,7 @@ only default ports forwarded, so the exposure is considered acceptable.
 - Target platform: Debian 13 (trixie), systemd, x86_64
 - Languages: Python 3.11+ and Bash. Pick by task: multi-step shell work - Bash
   script; YAML parsing, validation, templating - Python
-- Every operation must be idempotent. Re-running a deploy on a converged host
+- Every operation must be idempotent. Re-running a --deploy on a converged host
   is a no-op and must exit 0
 - Validate the entire config after generation
 
@@ -125,6 +125,19 @@ because not every component has (or can have) a reliable "did this change"
 signal - e.g. a docker-compose component whose config lives in a bind-mounted
 file (not `environment:`) has no way for `docker compose up -d` to notice the
 file's content changed, so a plain `--deploy` silently no-ops there.
+
+`--force` optionally takes a component name (1-to-1 with its `config.yaml`
+section, e.g. `--force wireguard`), scoping the unconditional restart/recreate
+to that component alone. Every *other* stage of the run is unaffected by the
+scoping: the registry is still built from every enabled component's
+`declare()`, every enabled component is still rendered into `build/` and run
+through `deploy_component()`, and `common_config_folder`/post-deploy-note
+handling still sees the full registry - only the named component's own
+idempotency check is bypassed, so anything a bystander component needs from
+the registry (e.g. a `caddy` route referencing the forced component's port)
+stays correct. `--force` with no name forces every enabled component, same as
+before. Component-scoping doesn't change wireguard's own special handling
+(below) - it just decides *whether* that path runs for a given invocation.
 
 `--force` is not "wipe and redeploy from scratch" - it must not be destructive
 to a component's own persistent runtime state (docker volumes, wg0.conf's

@@ -276,13 +276,23 @@ def main() -> None:
     )
     group.add_argument(
         "--force",
-        action="store_true",
+        nargs="?",
+        const=True,
+        default=False,
+        metavar="COMPONENT",
         help=(
-            "like --deploy, but unconditionally re-applies every component's "
-            "config (restarts services / recreates containers even if nothing "
-            "changed). wireguard is handled specially: an existing wg0.conf is "
-            "updated in place rather than left untouched, but its PrivateKey "
-            "and peers are preserved, never regenerated"
+            "like --deploy, but unconditionally re-applies a component's "
+            "config (restarts its service / recreates its container even if "
+            "nothing changed). With no COMPONENT, forces every enabled "
+            "component; with COMPONENT (a name from config.yaml's "
+            "components:), only that component is forced - every other "
+            "enabled component still runs through the normal --deploy "
+            "pipeline (registry, render, install) so COMPONENT's dependents "
+            "stay consistent, but is only restarted/recreated if its own "
+            "idempotency check says something changed. wireguard is handled "
+            "specially when forced: an existing wg0.conf is updated in place "
+            "rather than left untouched, but its PrivateKey and peers are "
+            "preserved, never regenerated"
         ),
     )
     args = parser.parse_args()
@@ -297,6 +307,13 @@ def main() -> None:
     general: dict[str, Any] = data["general"]
     enabled: list[str] = data.get("components") or []
     build_root = ROOT / general["build_path"]
+
+    if isinstance(args.force, str) and args.force not in enabled:
+        error(
+            f"--force {args.force}: no such component in config.yaml's "
+            f"components: list ({', '.join(enabled) if enabled else '(none)'})"
+        )
+        sys.exit(1)
 
     modules, registry = build_registry(enabled, data, general)
     info(f"Enabled components: {', '.join(enabled) if enabled else '(none)'}")
@@ -374,7 +391,8 @@ def main() -> None:
             src = build_root / name
             if not src.exists():
                 continue
-            deploy_component(name, src, install_root / name, force=args.force)
+            component_force = args.force is True or args.force == name
+            deploy_component(name, src, install_root / name, force=component_force)
 
         try:
             sync_common_config_folder(general, registry)

@@ -32,12 +32,17 @@ manual Python setup needed.
 | `--dry-run` | Prints exactly what `--deploy` would do, without doing it. |
 | `--generate` | Renders every enabled component's config into `build/` only. Nothing is installed or started. |
 | `--deploy` | Generate + install + start/restart, **conservatively**: each component only restarts/recreates if it detects an actual change (file diff, docker compose's own diff, etc). Safe to run repeatedly — a converged host is a no-op. |
-| `--force` | Same pipeline as `--deploy`, but skips the "did anything change" checks and unconditionally restarts every service / recreates every container. Needed because some components can't reliably detect a change on their own (see **Frigate config changes** below). |
+| `--force [COMPONENT]` | Same pipeline as `--deploy`, but skips the "did anything change" checks for the targeted component and unconditionally restarts its service / recreates its container. Needed because some components can't reliably detect a change on their own (see **Frigate config changes** below). With no `COMPONENT`, every enabled component is forced — the whole stack. With `COMPONENT` (a name from `config.yaml`'s `components:`, e.g. `--force wireguard`), *only* that component is forced; every other enabled component still runs the full generate/install pipeline as a normal `--deploy` would (so anything that reads the registry — e.g. Caddy's routes — stays correct), it just isn't forced to restart. |
 
 **Be aware:**
 - `--force` is not "wipe and redeploy." It never touches persistent runtime
   state (docker volumes, WireGuard's key/peers) — only the config that state
   runs under.
+- `--force` scoped to one component doesn't skip the other pipeline stages —
+  the capability registry is still built from every enabled component
+  first, and every enabled component is still rendered and installed, so a
+  scoped force never leaves a stale registry or config behind. Only the
+  named component's own idempotency check is bypassed.
 - **WireGuard is the one exception in both modes.** `--deploy` never touches
   an existing `/etc/wireguard/wg0.conf` at all — WireGuard peers live outside
   `config.yaml` (see below), and overwriting the file would wipe them.
@@ -87,8 +92,8 @@ mismatch either way. Details and full field list live in
   correctly) — again, no `--force` needed.
 - **`wireguard`** — installed via apt, not docker. **Peers are not managed
   in `config.yaml` at all** — see below. Changing `listen_port`/`server_mask`
-  after the first deploy requires `--force` (plain `--deploy` won't touch an
-  existing setup).
+  after the first deploy requires `--force` (or `--force wireguard` to force
+  just it) since plain `--deploy` won't touch an existing setup.
 - **`ssh`** — writes a drop-in at `/etc/ssh/sshd_config.d/99-serv.conf`
   rather than editing `sshd_config` directly. Always validated with
   `sshd -t` *before* ever restarting the service — an invalid config is
