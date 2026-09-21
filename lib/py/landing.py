@@ -13,8 +13,17 @@ def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
     if "install" not in general:
         raise ValueError("general.install is required")
     root = str(PurePosixPath(general["install"]) / "landing" / "site")
-    # no subdomain -> served at the apex domain itself
-    return {"static_site": {"root": root, "wan": config.get("wan", False)}}
+    # no subdomain -> served at the apex domain itself. cache: False because
+    # this page is regenerated on every deploy - without it browsers may serve
+    # a stale copy for a while, since file_server sends no Cache-Control and
+    # heuristic freshness kicks in
+    return {
+        "static_site": {
+            "root": root,
+            "wan": config.get("wan", False),
+            "cache": False,
+        }
+    }
 
 
 def _links(registry: dict[str, Any]) -> list[str]:

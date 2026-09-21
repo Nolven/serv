@@ -16,6 +16,15 @@ Everything else stays wg0-only - caddy `bind`s each site block that isn't
 opted in to `general.host_ip` so it's unreachable even if 443 is open. Opting
 a route in without `caddy.wan_enable` set is a validation error.
 
+Every subdomain this host serves is published by declaring a capability that
+carries one - `http_route` (proxied to a port) or `static_site` (served off
+disk). Declaring one is the *only* wiring a component needs: both the reverse
+proxy's site blocks and the index page at the apex domain are generated from
+those declarations, so a new subdomain appears on the index automatically and
+disappearing from `components:` removes it from both. Never maintain a list of
+services anywhere - if a subdomain has to be named a second time to show up
+somewhere, that is the registry problem below, not a missing entry.
+
 # General guidelines
 - Target platform: Debian 13 (trixie), systemd, x86_64
 - Languages: Python 3.11+ and Bash. Pick by task: multi-step shell work - Bash
@@ -53,16 +62,27 @@ never by naming each other directly.
     this specific route into being reachable from outside the WireGuard
     tunnel (via caddy's WAN-facing listener) - omit/false keeps it wg0-only,
     which is the default for everything. Consumed only by `caddy`; setting it
-    true requires `caddy.wan_enable: true` or rendering fails.
-  - `static_site: {root: str, subdomain?: str, browsable?: bool, wan?: bool}` -
+    true requires `caddy.wan_enable: true` or rendering fails. Every declared
+    `subdomain` is also listed on the apex index page - nothing extra to
+    declare for that, and nothing that opts out of it.
+  - `static_site: {root: str, subdomain?: str, browsable?: bool, wan?: bool,
+    cache?: bool}` -
     a directory of files a reverse proxy may serve directly off disk, with no
     process behind it. `root` is the absolute on-host path. `subdomain`, if
     present, is served at `<subdomain>.<apex_domain>`; omit it to be served at
     the apex domain itself (at most one component may do so). `browsable`
-    turns on a directory index. `wan` behaves exactly as in `http_route`.
-    Consumed only by `caddy`, which treats it interchangeably with
-    `http_route` - so any consumer wanting the full list of published
-    addresses must read both capability types, never just one.
+    turns on a directory index. `cache` defaults true; set it false for
+    content regenerated on every deploy, so the proxy tells browsers to
+    revalidate instead of serving a stale copy (`file_server` sends no
+    `Cache-Control` of its own, so heuristic caching applies otherwise).
+    `wan` behaves exactly as in `http_route`.
+    Consumed by `caddy`, which treats it interchangeably with `http_route`,
+    and - like `http_route` - listed on the apex index page whenever it
+    carries a `subdomain`. Any consumer wanting the full list of published
+    addresses must therefore read both capability types, never just one:
+    reading only `http_route` silently omits every static site. A consumer
+    building that list skips entries with no `subdomain` (those are the apex
+    itself).
   - `firewall_rule: {proto: "tcp" | "udp", port: int}` - a port that must be
     reachable from outside the host, on the public interface, independent of
     the WireGuard tunnel. The firewall trusts the wg0 interface entirely, so

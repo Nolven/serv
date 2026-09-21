@@ -60,7 +60,13 @@ def _body(name: str, kind: str, route: dict[str, Any]) -> list[str]:
     file_server = (
         "file_server browse" if route.get("browsable", False) else "file_server"
     )
-    return [f"\troot * {route['root']}", f"\t{file_server}"]
+    lines = [f"\troot * {route['root']}"]
+    if not route.get("cache", True):
+        # must-revalidate alongside no-cache: the etag still gets cheap 304s,
+        # but a stale copy is never served without asking first
+        lines.append('\theader Cache-Control "no-cache, must-revalidate"')
+    lines.append(f"\t{file_server}")
+    return lines
 
 
 def _site_blocks(
