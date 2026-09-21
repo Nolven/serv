@@ -1,0 +1,29 @@
+# Hub + agent for one host. The agent is a separate service (not built into
+# the hub) because it reads the host's own /proc, network interfaces and
+# docker socket - the hub only stores and displays what the agent reports.
+#
+# ports/environment are filled in by the renderer from config.yaml.
+services:
+  beszel:
+    container_name: beszel
+    image: henrygd/beszel:0.19.0
+    restart: unless-stopped
+    env_file:
+      - beszel.env
+    volumes:
+      - ./beszel_data:/beszel_data
+
+  beszel-agent:
+    container_name: beszel-agent
+    image: henrygd/beszel-agent:0.19.0
+    restart: unless-stopped
+    # host networking so reported interfaces/throughput are the host's own
+    # rather than the container's veth pair
+    network_mode: host
+    env_file:
+      - beszel-agent.env
+    volumes:
+      - ./agent_data:/var/lib/beszel-agent
+      # read-only: per-container stats come from the docker API. Even ro this
+      # is root-equivalent access, so the hub stays off the WAN by default
+      - /var/run/docker.sock:/var/run/docker.sock:ro

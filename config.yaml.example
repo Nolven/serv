@@ -8,6 +8,8 @@ components:
         - ddns          # must-have for static outside access
         - caddy
         - pihole
+        - beszel
+        - landing       # index page at the apex domain, links every published subdomain
         - wireguard
         - ssh
         - firewall
@@ -26,7 +28,7 @@ general:
         # file, for convenient inspection/editing. Only set up during
         # --deploy (the targets don't exist yet under --generate). Not every
         # component has one - see each component's config_file declaration
-        # (currently: caddy, frigate, pihole, wireguard, firewall).
+        # (currently: caddy, frigate, pihole, beszel, wireguard, firewall).
         common_config_folder:
                 enable: true
                 path: /stacks/cfg
@@ -44,6 +46,38 @@ caddy:
                 subdomain: fs              # required - reachable at fs.<general.apex_domain>, same as any other subdomain
                 browsable: true            # directory listing on/off
                 # root is general.fileserver_root, not set here
+
+##################################################################
+# docker (henrygd/beszel). Hub + agent for this host: CPU/RAM/disk/network
+# history, per-container stats, and alerts. The hub's port is published on
+# 127.0.0.1 only - the reverse proxy reaches it there, and a published docker
+# port would otherwise bypass the host's INPUT policy onto the LAN.
+# beszel_data/ (hub, includes its own SQLite db + generated SSH key) and
+# agent_data/ (fingerprint) are persistent runtime state - never regenerated.
+beszel:
+        subdomain:
+                name: monitor                 # required - reverse-proxy subdomain
+                port: 8090                     # required - host-side port for the hub's web UI
+                wan: false
+        admin_email: "admin@example.com"  # required - initial hub login; any address, no mail is sent to it
+        admin_pass: ""                     # required - min 10 chars, or the hub skips creating the user
+
+        # One-time pairing. The hub generates its public key and registration
+        # token on first run, so these cannot be known before it starts:
+        # leave them empty for the first deploy (only the hub is rendered),
+        # then follow the reminder printed at the end of that run.
+        agent:
+                key: ""
+                token: ""
+                # listen_port: 45876        # optional - agent's own loopback listener
+
+##################################################################
+# generated static index page served at the apex domain itself, linking every
+# subdomain any component publishes (an http_route or static_site capability).
+# Nothing to configure per-service - the list is derived from the registry.
+landing:
+        title: "myhost"                   # heading shown on the page; defaults to general.apex_domain
+        wan: false                        # keep false - it enumerates your internal services
 
 ##################################################################
 frigate:

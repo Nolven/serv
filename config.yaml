@@ -2,6 +2,7 @@
 components:
         - frigate
         - pihole
+        - beszel
         - landing
         - caddy
         - wireguard
@@ -23,6 +24,30 @@ general:
         common_config_folder:       # folder with symlinks to each config (not compose)
                 enable: true
                 path: /stacks/cfg
+
+##################################################################
+# docker (henrygd/beszel). Hub + agent for this host: CPU/RAM/disk/network
+# history, per-container stats, and alerts. The hub's port is published on
+# 127.0.0.1 only - the reverse proxy reaches it there, and a published docker
+# port would otherwise bypass the host's INPUT policy onto the LAN.
+# beszel_data/ (hub, includes its own SQLite db + generated SSH key) and
+# agent_data/ (fingerprint) are persistent runtime state - never regenerated.
+beszel:
+        subdomain:
+                name: monitor
+                port: 8090
+                wan: false
+        admin_email: "admin@noor.now"        # hub login - any address, no mail is sent to it
+        admin_pass: "changeme-please"   # USER, BE RESPONSIBLE - CHANGE (min 10 chars)
+
+        # One-time pairing. The hub generates its public key and registration
+        # token on first run, so these cannot be known before it starts:
+        # leave them empty for the first deploy (only the hub is rendered),
+        # then follow the reminder printed at the end of that run.
+        agent:
+                key: ""
+                token: ""
+                # listen_port: 45876        # optional - agent's own loopback listener
 
 ##################################################################
 # index page at the apex domain, linking every published subdomain
