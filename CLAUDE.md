@@ -1,12 +1,20 @@
 # Project overview
 Automated server deployment driven by a single `config.yaml` that the user edits
 before running. Target is a machine on the local network. WireGuard is the
-ingress for every proxied/internal service - the firewall trusts the wg0
-interface entirely, so nothing behind it needs its own opening. SSH (the
+default ingress for every proxied/internal service - the firewall trusts the
+wg0 interface entirely, so nothing behind it needs its own opening. SSH (the
 `ssh` component) is kept reachable directly from the WAN too, like WireGuard
 itself - both declare a `firewall_rule` like any other component, nothing
 hardcoded in `firewall.py`. This targets a home server behind a router with
 only default ports forwarded, so the exposure is considered acceptable.
+
+`caddy` is the one exception to "wg0-only by default": when `caddy.wan_enable`
+is true it declares a `firewall_rule` for 443/tcp, and any individual
+`http_route` consumer can opt itself into that WAN-facing listener with
+`wan: true` on its own subdomain config (e.g. `pihole.subdomain.wan: true`).
+Everything else stays wg0-only - caddy `bind`s each site block that isn't
+opted in to `general.host_ip` so it's unreachable even if 443 is open. Opting
+a route in without `caddy.wan_enable` set is a validation error.
 
 # General guidelines
 - Target platform: Debian 13 (trixie), systemd, x86_64
@@ -39,9 +47,13 @@ never by naming each other directly.
   component name.
 - Capability vocabulary (extend this list before a component needs a new
   shape - do not invent a key inline):
-  - `http_route: {subdomain: str, port: int, redir?: str}` - an HTTP service
-    a reverse proxy may expose. `redir`, if present, is a path (e.g.
-    `/admin`) that bare `/` should redirect to.
+  - `http_route: {subdomain: str, port: int, redir?: str, wan?: bool}` - an
+    HTTP service a reverse proxy may expose. `redir`, if present, is a path
+    (e.g. `/admin`) that bare `/` should redirect to. `wan`, if true, opts
+    this specific route into being reachable from outside the WireGuard
+    tunnel (via caddy's WAN-facing listener) - omit/false keeps it wg0-only,
+    which is the default for everything. Consumed only by `caddy`; setting it
+    true requires `caddy.wan_enable: true` or rendering fails.
   - `firewall_rule: {proto: "tcp" | "udp", port: int}` - a port that must be
     reachable from outside the host, on the public interface, independent of
     the WireGuard tunnel. The firewall trusts the wg0 interface entirely, so

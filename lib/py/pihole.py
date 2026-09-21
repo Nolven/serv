@@ -27,6 +27,8 @@ def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
     redir = subdomain.get("redir")
     if redir:
         route["redir"] = redir
+    if subdomain.get("wan", False):
+        route["wan"] = True
     capabilities["http_route"] = route
     return capabilities
 

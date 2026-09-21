@@ -37,10 +37,13 @@ def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(
             f"frigate.subdomain missing required key(s): {', '.join(missing)}"
         )
-    capabilities["http_route"] = {
+    route: dict[str, Any] = {
         "subdomain": subdomain["name"],
         "port": subdomain["port"],
     }
+    if subdomain.get("wan", False):
+        route["wan"] = True
+    capabilities["http_route"] = route
     return capabilities
 
 

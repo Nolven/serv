@@ -25,16 +25,20 @@ general:
 
 ##################################################################
 caddy:
+        https: true
+        wan_enable: false
         fileserver:
                 enable: true
                 subdomain: fs
                 browsable: true
+                wan: false
 
 ##################################################################
 frigate:
         subdomain:
                 name: "cams"
                 port: 8971
+                wan: false
         docker:
                 shm_size: "187m"
                 volumes:
@@ -74,6 +78,7 @@ pihole:
                 port: 8081
                 name: pihole
                 redir: /admin
+                wan: false
         admin_pass: 12345         # USER, BE RESPONSIBLE - CHANGE
         upstream_dns: 8.8.8.8
 
