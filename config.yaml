@@ -2,6 +2,7 @@
 components:
         - frigate
         - pihole
+        - landing
         - caddy
         - wireguard
         - ddns
@@ -22,6 +23,12 @@ general:
         common_config_folder:       # folder with symlinks to each config (not compose)
                 enable: true
                 path: /stacks/cfg
+
+##################################################################
+# index page at the apex domain, linking every published subdomain
+landing:
+        title: "noor"
+        wan: false
 
 ##################################################################
 caddy:

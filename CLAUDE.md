@@ -54,6 +54,15 @@ never by naming each other directly.
     tunnel (via caddy's WAN-facing listener) - omit/false keeps it wg0-only,
     which is the default for everything. Consumed only by `caddy`; setting it
     true requires `caddy.wan_enable: true` or rendering fails.
+  - `static_site: {root: str, subdomain?: str, browsable?: bool, wan?: bool}` -
+    a directory of files a reverse proxy may serve directly off disk, with no
+    process behind it. `root` is the absolute on-host path. `subdomain`, if
+    present, is served at `<subdomain>.<apex_domain>`; omit it to be served at
+    the apex domain itself (at most one component may do so). `browsable`
+    turns on a directory index. `wan` behaves exactly as in `http_route`.
+    Consumed only by `caddy`, which treats it interchangeably with
+    `http_route` - so any consumer wanting the full list of published
+    addresses must read both capability types, never just one.
   - `firewall_rule: {proto: "tcp" | "udp", port: int}` - a port that must be
     reachable from outside the host, on the public interface, independent of
     the WireGuard tunnel. The firewall trusts the wg0 interface entirely, so
