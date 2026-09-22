@@ -1,0 +1,31 @@
+# WireGuard server + web admin UI in one container (ghcr.io/wg-easy/wg-easy).
+# network_mode: host, not a bridge network - other components (caddy, etc.)
+# bind to general.host_ip expecting a real wg0 interface to exist on the host
+# itself; a bridge-networked container would terminate the tunnel inside its
+# own netns instead, which nothing on the host could then reach.
+#
+# v15 only reads its INIT_* env vars on the container's very first start -
+# after that everything (including config.yaml changes to listen_port, host,
+# admin creds, etc.) lives in wg-easy's own state under ./etc_wireguard and
+# must be changed by hand in the webui. Redeploys are otherwise idempotent
+# the normal docker-compose way (this file/env don't change if config.yaml
+# doesn't), so a converged host's --deploy stays a no-op.
+#
+# environment (wg-easy.env) is filled in by the renderer from config.yaml.
+services:
+  wg-easy:
+    container_name: wg-easy
+    image: ghcr.io/wg-easy/wg-easy:15
+    restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+    volumes:
+      - ./etc_wireguard:/etc/wireguard
+      - /lib/modules:/lib/modules:ro
+    env_file:
+      - wg-easy.env

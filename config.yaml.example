@@ -10,7 +10,7 @@ components:
         - pihole
         - beszel
         - landing       # index page at the apex domain, links every published subdomain
-        - wireguard
+        - wg-easy
         - ssh
         - firewall
 
@@ -23,12 +23,13 @@ general:
         build_path: ./build               # required - where --generate writes rendered configs
         install: /stacks/example          # required - where everything non-shared will exist on the target host
         host_ip: 10.13.13.1               # required by pihole - the IP peers should use to reach this host (typically its WireGuard address)
+        wan_host: "myhost.duckdns.org"    # required by wg-easy - public hostname WG clients connect to (your ddns.domain, entered by hand - components can't reference each other)
 
         # optional - one folder of symlinks to every component's "main" config
         # file, for convenient inspection/editing. Only set up during
         # --deploy (the targets don't exist yet under --generate). Not every
         # component has one - see each component's config_file declaration
-        # (currently: caddy, frigate, pihole, beszel, wireguard, firewall).
+        # (currently: caddy, frigate, pihole, beszel, wg-easy, firewall).
         common_config_folder:
                 enable: true
                 path: /stacks/cfg
@@ -134,23 +135,26 @@ pihole:
         upstream_dns: "1.1.1.1"            # required - single value or a list; Pi-hole has no default, empty means it resolves nothing
 
 ##################################################################
-# installed via the official apt package (lib/sh/wireguard.sh), not docker.
-# server keypair is generated ONCE on first deploy and persisted at
-# /etc/wireguard - once wg0.conf exists, redeploying never touches it again
-# (peers get added live via `wg set`, so overwriting the file on every
-# deploy would silently wipe them). Changing server_mask/listen_port here
-# later will NOT take effect on an already-bootstrapped host - edit
-# /etc/wireguard/wg0.conf by hand, or delete it and redeploy.
-# NAT/forwarding (PostUp/PostDown, ip_forward) is set up automatically,
-# auto-detecting the LAN interface from the host's default route.
-# Peers are NOT managed here or by --generate/--deploy at all - run
-# `bash lib/sh/wireguard_add_peer.sh <name> <ip>` manually to onboard one.
-wireguard:
+# docker (ghcr.io/wg-easy/wg-easy). WireGuard server + webui, network_mode:
+# host so wg0 lands on the host itself (general.host_ip). Peers are added
+# through the webui, not config.yaml.
+#
+# v15's INIT_* setup only runs on the container's very first start - after
+# that, listen_port/admin_user/admin_pass/dns changes here have no effect
+# until also changed by hand in the webui at <subdomain.name>.<apex_domain>.
+wg-easy:
         server_mask: 24                    # required
         listen_port: 44444                 # required - forward this UDP port from your router; outside this tool's scope
                                             # also declares a firewall_rule (udp/listen_port) so the firewall
                                             # component opens it on the WAN - that's how the tunnel gets reached
                                             # in the first place
+        admin_user: "admin"                # required - webui login
+        admin_pass: "changeme-please"      # required - USER, BE RESPONSIBLE - CHANGE
+        subdomain:
+                name: wg                   # required - reverse-proxy subdomain
+                port: 51821                # required - webui's own listen port
+                wan: false
+        # dns: "1.1.1.1"                   # optional - default DNS pushed to WG clients
 
 ##################################################################
 # writes a drop-in at /etc/ssh/sshd_config.d/99-serv.conf (Debian's default
@@ -158,7 +162,7 @@ wireguard:
 # settings below it without touching sshd_config itself). Validated with
 # `sshd -t` before ever restarting ssh - reverts and refuses to restart if
 # the new config is invalid, so a bad value here can't lock you out.
-# Declares a firewall_rule like wireguard does, so the firewall component
+# Declares a firewall_rule like wg-easy does, so the firewall component
 # opens this port on the WAN too - nothing hardcoded between the two.
 ssh:
         port: 22                          # required - change together with the firewall in the same deploy
@@ -170,7 +174,7 @@ ssh:
 # INPUT policy is drop; the wg0 interface is trusted entirely (nothing
 # reachable only over the tunnel - frigate, caddy, pihole - needs its own
 # rule). The only ports opened on the WAN are whatever components declare a
-# firewall_rule capability (currently: wireguard's listen_port, ssh's port -
+# firewall_rule capability (currently: wg-easy's listen_port, ssh's port -
 # both handled identically, nothing ssh-specific hardcoded here).
 # Re-running --generate/--deploy re-renders the whole ruleset from the
 # current registry every time - it isn't hand-edited like wg0.conf.

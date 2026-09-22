@@ -5,7 +5,7 @@ components:
         - beszel
         - landing
         - caddy
-        - wireguard
+        - wg-easy
         - ddns
         - ssh
         - firewall
@@ -15,6 +15,7 @@ general:
         apex_domain: "noor.now"
         hostname: "noor"
         host_ip: 10.100.0.1         # since connection is possible only through wireguard; it's both hip and wg iface
+        wan_host: "33.duckdns.org"  # public hostname WG clients connect to should be the same as in ddns.domain
 
         fileserver_root: /srv/share
 
@@ -115,10 +116,22 @@ pihole:
         upstream_dns: 8.8.8.8
 
 ###################################################################
-wireguard:
+# docker (ghcr.io/wg-easy/wg-easy). WireGuard server + webui, network_mode:
+# host so wg0 lands on the host itself (general.host_ip). INIT_* setup only
+# runs on the container's very first start - after that, listen_port/
+# admin_user/admin_pass/dns changes here have no effect until also changed
+# by hand in the webui at wg.<apex_domain>.
+wg-easy:
         # interface_ip = general.host_ip
         server_mask: 24
         listen_port: 44444
+        admin_user: "admin"
+        admin_pass: "changeme-please"   # USER, BE RESPONSIBLE - CHANGE
+        subdomain:
+                name: wg
+                port: 51821
+                wan: false
+        # dns: "1.1.1.1"                # optional - default DNS pushed to WG clients
 
 ###################################################################
 ssh:

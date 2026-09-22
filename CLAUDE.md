@@ -168,7 +168,7 @@ file (not `environment:`) has no way for `docker compose up -d` to notice the
 file's content changed, so a plain `--deploy` silently no-ops there.
 
 `--force` optionally takes a component name (1-to-1 with its `config.yaml`
-section, e.g. `--force wireguard`), scoping the unconditional restart/recreate
+section, e.g. `--force wg-easy`), scoping the unconditional restart/recreate
 to that component alone. Every *other* stage of the run is unaffected by the
 scoping: the registry is still built from every enabled component's
 `declare()`, every enabled component is still rendered into `build/` and run
@@ -177,17 +177,17 @@ handling still sees the full registry - only the named component's own
 idempotency check is bypassed, so anything a bystander component needs from
 the registry (e.g. a `caddy` route referencing the forced component's port)
 stays correct. `--force` with no name forces every enabled component, same as
-before. Component-scoping doesn't change wireguard's own special handling
-(below) - it just decides *whether* that path runs for a given invocation.
+before.
 
 `--force` is not "wipe and redeploy from scratch" - it must not be destructive
-to a component's own persistent runtime state (docker volumes, wg0.conf's
+to a component's own persistent runtime state (docker volumes, generated
 keys/peers, etc.), only to the *rendered config* that state is running under.
-wireguard is the one component that needs explicit handling for this: normal
-`--deploy` never touches an existing `wg0.conf` at all (peers are added live,
-outside config.yaml, via `wireguard_add_peer.sh`), so `--force` updates it in
-place instead - regenerating `[Interface]` (Address/ListenPort/PostUp/
-PostDown) from current config, while preserving the existing PrivateKey and
-every `[Peer]` block byte-for-byte. Before adding `--force` handling to a new
-component, check whether it has similar persistent state a blind recreate
-would lose.
+A docker-compose component's bind-mounted state directories (e.g. wg-easy's
+`./etc_wireguard`) survive `docker compose up -d --force-recreate` untouched
+by default, so most components need no special handling here. Before adding
+`--force` handling to a new component, check whether it has persistent state
+a blind recreate/restart *would* lose (e.g. a component that renders its
+runtime state file directly into `build/`, rather than leaving it in an
+untouched bind mount) - if so, that component's own script needs to update
+that state in place instead of overwriting it, the way a stateful component
+must.
