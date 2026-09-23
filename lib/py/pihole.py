@@ -9,10 +9,16 @@ DEFAULTS_DIR = ROOT / "components" / "pihole"
 
 
 def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
+    host_ip = general.get("host_ip")
+    if not host_ip:
+        raise ValueError("general.host_ip is required by pihole")
     capabilities: dict[str, Any] = {
         "config_file": {
             "path": str(PurePosixPath(general["install"]) / "pihole" / "compose.yaml")
-        }
+        },
+        # port 53 is published on every host address, so peers reach it at
+        # host_ip over the tunnel
+        "dns_resolver": {"address": host_ip},
     }
 
     subdomain = config.get("subdomain")

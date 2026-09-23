@@ -96,6 +96,11 @@ never by naming each other directly.
     Consumed only by `main.py`'s `general.common_config_folder` step, which
     symlinks it in; not every component needs to declare one (skip it for
     anything with no single config worth surfacing).
+  - `dns_resolver: {address: str}` - a DNS resolver running on this host,
+    reachable by WireGuard peers at `address` (an IP, typically
+    `general.host_ip`). Consumed by `wg-easy` as the default DNS pushed to
+    new clients when `wg-easy.dns` isn't set explicitly; every declared
+    address is used, in registry-key order.
   - `post_deploy_note: {message: str}` - a static, human-readable reminder
     about something manual the user still needs to do that isn't otherwise
     derivable from the registry (e.g. a one-time generated password to go

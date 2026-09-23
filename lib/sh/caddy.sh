@@ -30,6 +30,19 @@ if ! command -v caddy >/dev/null 2>&1; then
     apt-get install -y caddy
 fi
 
+# site blocks bind general.host_ip, which may not exist on the host yet
+# (e.g. it lives on a tunnel interface another service brings up later, at
+# deploy or at boot). Without this, reload/start fails with "cannot assign
+# requested address" - with it, caddy binds regardless and starts serving on
+# that address as soon as it appears
+NONLOCAL_BIND_CONF="/etc/sysctl.d/99-caddy-nonlocal-bind.conf"
+nonlocal_desired=$'net.ipv4.ip_nonlocal_bind=1\n'
+if [[ ! -f "$NONLOCAL_BIND_CONF" ]] || [[ "$(cat "$NONLOCAL_BIND_CONF")"$'\n' != "$nonlocal_desired" ]]; then
+    printf '%s' "$nonlocal_desired" > "$NONLOCAL_BIND_CONF"
+    echo "[INFO] installed $NONLOCAL_BIND_CONF"
+fi
+sysctl -p "$NONLOCAL_BIND_CONF" >/dev/null
+
 mkdir -p "$(dirname "$CADDYFILE_INSTALLED")"
 
 changed=false

@@ -154,7 +154,12 @@ wg-easy:
                 name: wg                   # required - reverse-proxy subdomain
                 port: 51821                # required - webui's own listen port
                 wan: false
-        # dns: "1.1.1.1"                   # optional - default DNS pushed to WG clients
+        # dns: "1.1.1.1"                   # optional - default DNS pushed to WG clients (string or list);
+                                            # unset, every dns_resolver in the registry is used (e.g. pihole
+                                            # at general.host_ip), else wg-easy's own 1.1.1.1 default
+        # device: eno1                     # optional - LAN interface peers' traffic is masqueraded out of;
+                                            # unset, auto-detected from the host's default route. Unlike the
+                                            # INIT_* values above, this one is enforced on every deploy
 
 ##################################################################
 # writes a drop-in at /etc/ssh/sshd_config.d/99-serv.conf (Debian's default
