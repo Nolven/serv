@@ -46,11 +46,30 @@ sysctl -p "$NONLOCAL_BIND_CONF" >/dev/null
 mkdir -p "$(dirname "$CADDYFILE_INSTALLED")"
 
 changed=false
+backup=""
 if [[ "$FORCE" == true ]] || ! cmp -s "$CADDYFILE_STAGED" "$CADDYFILE_INSTALLED" 2>/dev/null; then
+    if [[ -f "$CADDYFILE_INSTALLED" ]]; then
+        backup=$(mktemp)
+        cp -p "$CADDYFILE_INSTALLED" "$backup"
+    fi
     install -m 0644 "$CADDYFILE_STAGED" "$CADDYFILE_INSTALLED"
     changed=true
     echo "[INFO] installed $CADDYFILE_INSTALLED"
 fi
+
+# a failed reload leaves caddy running its *previous* config - if the new
+# file stayed installed, the next deploy's cmp would see "no change" and
+# never retry, silently leaving the running config stale. Putting the old
+# file back keeps the installed file matching what caddy actually runs.
+rollback() {
+    if [[ -n "$backup" ]]; then
+        mv "$backup" "$CADDYFILE_INSTALLED"
+    else
+        rm -f "$CADDYFILE_INSTALLED"
+    fi
+    echo "[ERROR] $1 - restored the previous $CADDYFILE_INSTALLED so the next deploy retries; see 'journalctl -xeu caddy.service'" >&2
+    exit 1
+}
 
 if [[ "$changed" == true ]] && ! systemctl is-active --quiet caddy; then
     # only when caddy isn't already running - "caddy validate" provisions a
@@ -58,18 +77,21 @@ if [[ "$changed" == true ]] && ! systemctl is-active --quiet caddy; then
     # bind the same default admin socket (localhost:2019) the live systemd
     # instance already holds. Once caddy is running, "systemctl reload"
     # below validates via that instance's own /load endpoint instead.
-    caddy validate --config "$CADDYFILE_INSTALLED" --adapter caddyfile
+    caddy validate --config "$CADDYFILE_INSTALLED" --adapter caddyfile         || rollback "new Caddyfile failed validation"
 fi
 
 systemctl enable --quiet caddy
 
 if [[ "$changed" == true ]]; then
     if systemctl is-active --quiet caddy; then
-        systemctl reload caddy
+        systemctl reload caddy || rollback "caddy reload failed"
         echo "[INFO] reloaded caddy"
     else
-        systemctl start caddy
+        systemctl start caddy || rollback "caddy failed to start"
         echo "[INFO] started caddy"
+    fi
+    if [[ -n "$backup" ]]; then
+        rm -f "$backup"
     fi
 elif ! systemctl is-active --quiet caddy; then
     systemctl start caddy
