@@ -3,6 +3,9 @@ from typing import Any
 
 from utils import info, write_text
 
+ROOT = Path(__file__).resolve().parents[2]
+DEFAULTS_DIR = ROOT / "components" / "wg-easy"
+
 # wg-easy has no IPv6 story in this project; a client-subnet CIDR is required
 # alongside INIT_IPV4_CIDR (same "group" in wg-easy's unattended-setup env
 # vars - it's all-or-nothing) but nothing here ever routes over it
@@ -98,3 +101,10 @@ def render(
 
     write_text(out / "wg-easy.env", "\n".join(lines) + "\n", mode=0o600)
     info("Generated wg-easy.env (contains admin password - content not printed)")
+
+    # nothing in compose.yaml is config-driven (everything goes through
+    # wg-easy.env), so it's copied verbatim
+    compose_text = write_text(
+        out / "compose.yaml", (DEFAULTS_DIR / "compose.yaml").read_text()
+    )
+    info(f"Generated wg-easy compose:\n{compose_text}")
