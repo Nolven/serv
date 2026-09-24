@@ -33,7 +33,26 @@ def _rules_from_registry(registry: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _ruleset(registry: dict[str, Any]) -> str:
+def _tunnel_address_rule(host_ip: str | None) -> list[str]:
+    """Only accept traffic for the tunnel's own address from the tunnel.
+
+    Linux accepts a packet for any of its addresses on any interface, so
+    without this a LAN device could route host_ip via this host's LAN address
+    and reach every service that binds only host_ip - as soon as some port
+    (e.g. 443) is opened for the WAN.
+    """
+    if not host_ip:
+        return []
+    family = "ip6" if ":" in host_ip else "ip"
+    return [
+        "",
+        "\t\t# the tunnel address is only reachable through the tunnel - services",
+        "\t\t# bound to it stay wg0-only even on ports opened for the WAN below",
+        f'\t\tiifname != "{WG_INTERFACE}" {family} daddr {host_ip} drop',
+    ]
+
+
+def _ruleset(registry: dict[str, Any], host_ip: str | None) -> str:
     wan_rules = _rules_from_registry(registry)
 
     lines = [
@@ -56,6 +75,7 @@ def _ruleset(registry: dict[str, Any]) -> str:
         "\t\tiif lo accept",
         "\t\tct state established,related accept",
         "\t\tct state invalid drop",
+        *_tunnel_address_rule(host_ip),
         "",
         "\t\t# WireGuard tunnel is fully trusted once connected - services",
         "\t\t# behind it don't need their own rule here",
@@ -82,7 +102,11 @@ def render(
     if not nft_file_path:
         raise ValueError("firewall.nft_file_path is required")
 
-    ruleset_text = write_text(out / "nftables.conf", _ruleset(registry), mode=0o644)
+    ruleset_text = write_text(
+        out / "nftables.conf",
+        _ruleset(registry, general.get("host_ip")),
+        mode=0o644,
+    )
     info(f"Generated nftables ruleset:\n{ruleset_text}")
 
     write_text(out / "install_path", f"{nft_file_path}\n", mode=0o644)

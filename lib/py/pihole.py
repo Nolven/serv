@@ -39,6 +39,27 @@ def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
     return capabilities
 
 
+def _public_hosts(general: dict[str, Any], registry: dict[str, Any]) -> list[str]:
+    """Every http_route's public address, answered with host_ip for peers.
+
+    Publicly these resolve to the WAN address, where only a route's public
+    paths are served - resolving them to host_ip over the tunnel lets peers
+    reach the whole service under that same name.
+    """
+    hosts: list[str] = []
+    for name in sorted(registry):
+        public = (registry[name].get("http_route") or {}).get("public")
+        if not public:
+            continue
+        wan_host = general.get("wan_host")
+        if not wan_host:
+            raise ValueError(
+                f"{name}: http_route.public needs general.wan_host to be resolved"
+            )
+        hosts.append(f"{public['subdomain']}.{wan_host}")
+    return hosts
+
+
 def render(
     config: dict[str, Any], general: dict[str, Any], registry: dict[str, Any], out: Path
 ) -> None:
@@ -73,8 +94,9 @@ def render(
     service["environment"]["FTLCONF_dns_upstreams"] = ";".join(
         str(d) for d in upstream_dns
     )
-    service["environment"]["FTLCONF_misc_dnsmasq_lines"] = (
-        f"address=/{apex_domain}/{host_ip}"
+    service["environment"]["FTLCONF_misc_dnsmasq_lines"] = ";".join(
+        [f"address=/{apex_domain}/{host_ip}"]
+        + [f"address=/{host}/{host_ip}" for host in _public_hosts(general, registry)]
     )
     service["ports"] = ["53:53/tcp", "53:53/udp", f"{port}:{port}/tcp"]
 

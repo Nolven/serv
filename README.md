@@ -15,7 +15,6 @@ and docker).
 
 ```bash
 cp config.yaml.example config.yaml
-chmod 600 config.yaml          # it holds credentials
 # edit config.yaml
 ./deploy.sh --check            # validate before doing anything
 ./deploy.sh --deploy
@@ -74,6 +73,9 @@ mismatch either way. Details and full field list live in
   WireGuard/SSH reaches the host from the WAN. Reverse-proxy blocks are
   generated automatically for every component that exposes an HTTP service;
   you don't configure routing here beyond the optional static fileserver.
+  With `wan_enable`, 443 is opened on the WAN, but only routes that opt in
+  (`wan: true`, or a component's public address such as `fileserver`'s
+  share links) answer there.
 - **`frigate`** — docker-based. Camera credentials go straight into RTSP
   URLs in the rendered config — treat `build/frigate` and the deployed
   install directory as sensitive. **Frigate's web UI password cannot be set
@@ -102,9 +104,29 @@ mismatch either way. Details and full field list live in
   a home network behind a router with only default ports forwarded; if
   that's not your threat model, reconsider `password_authentication` and
   `permit_root_login`.
+- **`fileserver`** — everything that serves `general.fileserver_root` beyond
+  caddy's read-only view, as two parts with their own `enable`:
+  - **`samba`** (apt) — one SMB3 share, reachable over WireGuard only:
+    `\\<host_ip>\<share_name>` on Windows, `smb://<host_ip>/<share_name>` on
+    Linux/Android (Android needs an SMB-capable file manager app).
+  - **`sftpgo`** (docker) — web UI plus expiring share and upload links, all
+    under one public name, `<share_link.subdomain>.<general.wan_host>`: over
+    the tunnel (pihole resolves it to `host_ip`) it's the full UI, from the
+    WAN only the share pages are served and everything else is a 404. Needs
+    `caddy.https`, `caddy.wan_enable` and 443 forwarded on the router. Links
+    can only be created by the separate outbox account, which sees nothing
+    outside its folder; your own account can't create any. **Accounts are
+    created on the container's first start only** — after that, change
+    passwords in the web UI (`/web/admin`), not `config.yaml`.
+
+  Both write files as `fileserver.user`; on the first deploy it takes over
+  ownership of `fileserver_root` recursively. Disabling a part stops it
+  (samba) or removes its container (sftpgo) but keeps its state.
 - **`firewall`** — nftables, installed via apt. Default-drop on the public
-  interface; `wg0` is fully trusted; the *only* other things opened are
-  whatever ports components declare (currently WireGuard's and SSH's). If
+  interface; `wg0` is fully trusted, and traffic to `host_ip` is only
+  accepted from `wg0`; the *only* other things opened are
+  whatever ports components declare (currently WireGuard's, SSH's, and
+  443 when `caddy.wan_enable` is on). If
   you're testing this for the first time, do it with console/physical
   access to the box, not only over the connection you're about to firewall.
 
@@ -124,8 +146,8 @@ that peer's client config by hand — there's no automated delivery step yet.
 ## Things worth knowing before your first deploy
 
 - `config.yaml` is never touched automatically by anything in this repo
-  beyond what you explicitly run — it's gitignored and expected to hold
-  real credentials, keep it `chmod 600`.
+  beyond what you explicitly run. It holds real credentials, so mind
+  where it ends up.
 - `build/` is fully regenerated on every `--generate`/`--deploy`/`--force`
   and is gitignored — don't hand-edit anything under it, it won't survive
   the next run.

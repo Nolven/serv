@@ -1,6 +1,5 @@
 # Copy this file to config.yaml, fill in the placeholders, then run
-# ./deploy.sh --check to validate it. config.yaml holds credentials - keep it
-# chmod 0600.
+# ./deploy.sh --check to validate it. config.yaml holds credentials.
 
 # uncomment to enable components
 components:
@@ -13,6 +12,7 @@ components:
         - wg-easy
         - ssh
         - firewall
+        - fileserver    # SMB mounting + web UI with expiring share/upload links
 
 ##################################################################
 general:
@@ -42,11 +42,76 @@ general:
 # component that declares an http_route capability (e.g. frigate) - not
 # user-configurable here.
 caddy:
-        fileserver:
+        https: true                        # true: TLS with caddy's local CA for every site (plus Let's Encrypt
+                                           # for http_route.public addresses, which require it)
+        wan_enable: true                   # opens 443/tcp on the WAN - required by fileserver.sftpgo.share_link;
+                                           # forward 443 on the router too
+        fileserver:                        # read-only view of general.fileserver_root, wg0-only
                 enable: true
                 subdomain: fs              # required - reachable at fs.<general.apex_domain>, same as any other subdomain
                 browsable: true            # directory listing on/off
                 # root is general.fileserver_root, not set here
+
+##################################################################
+# Everything that serves general.fileserver_root beyond caddy's read-only
+# view: SMB mounting (samba) and a web UI with share/upload links (sftpgo).
+# Each subcomponent has its own enable - one can be turned off without the
+# other. Both write files as `user`, so whatever one creates stays
+# readable/writable by the other.
+fileserver:
+        user: fileshare              # required - system account (no shell, no login) that owns everything
+                                     # under general.fileserver_root; created on deploy
+
+        # installed via apt, not docker. One SMB3 share of general.fileserver_root,
+        # reachable only over WireGuard (the firewall only trusts wg0; no NetBIOS /
+        # network discovery). Mount it as:
+        #   Windows:        \\<general.host_ip>\<share_name>  (Map network drive)
+        #   Linux/Android:  smb://<general.host_ip>/<share_name>
+        samba:
+                enable: true
+                share_name: share    # required - the name you mount
+                login: "me"          # required - SMB login; created as a no-login Linux user (no shell, no SSH)
+                password: ""         # required - SMB password; separate from every other password here
+
+        # docker (drakkan/sftpgo, version pinned in its compose.yaml). Web UI for
+        # general.fileserver_root (browse, upload, download) plus expiring share and
+        # upload links. Its own SFTP and WebDAV servers are off - samba handles
+        # mounting, ssh handles SFTP.
+        #
+        # One address for everything: <share_link.subdomain>.<general.wan_host>.
+        #   over WireGuard   the full web UI (admin at /web/admin, your login at
+        #                    /web/client) - pihole resolves the name to host_ip
+        #   from the WAN     share-link pages only, everything else 404s. Needs
+        #                    caddy.wan_enable + caddy.https + 443 forwarded on the
+        #                    router; gets a Let's Encrypt certificate
+        # Create links from that address - sftpgo builds each link from the
+        # address you opened it at. <subdomain.name>.<general.apex_domain> (listed
+        # on the landing page) just redirects there.
+        #
+        # The admin, user and outbox accounts below are created on the very first
+        # start only, if missing - like wg-easy's INIT_* values, later changes here
+        # have no effect; manage them in the web UI after that. Accounts and links
+        # live in sftpgo's own database (persistent runtime state, never regenerated).
+        sftpgo:
+                enable: true
+                subdomain:
+                        name: sftpgo          # required - landing-page entry; redirects to the share_link address
+                        port: 8080           # required - port sftpgo listens on, 127.0.0.1 only (caddy proxies to it)
+                share_link:
+                        subdomain: share     # required - links are served at share.<general.wan_host>
+                admin_user: "admin"          # required - admin UI login (manages accounts, not files)
+                admin_pass: ""               # required - USER, BE RESPONSIBLE
+                user:                        # your everyday login: all of general.fileserver_root, cannot create links
+                        name: "me"
+                        password: ""
+                outbox:                      # the only account that can create links - it sees nothing outside its
+                                             # folder, so no link (or bug in link handling) can reach the rest
+                        name: "outbox"
+                        password: ""
+                        folder: outbox       # required - under general.fileserver_root; created on deploy. Put files
+                                             # here to share them; upload links must point at a folder in here too
+                        quota: 20G           # total size the outbox may grow to (caps what uploaders fill); 0 = unlimited
+                        max_file_size: 4G    # largest single uploaded file; 0 = unlimited
 
 ##################################################################
 # docker (henrygd/beszel). Hub + agent for this host: CPU/RAM/disk/network

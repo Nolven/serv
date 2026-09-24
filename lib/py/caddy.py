@@ -46,6 +46,81 @@ def _require(
         raise ValueError(f"{name}: {kind} missing key(s): {', '.join(missing)}")
 
 
+def _public_host(
+    name: str, route: dict[str, Any], config: dict[str, Any], general: dict[str, Any]
+) -> str:
+    public = route["public"]
+    _require(name, "http_route.public", public, ("subdomain", "paths"))
+    paths = public["paths"]
+    if (
+        not isinstance(paths, list)
+        or not paths
+        or not all(isinstance(p, str) and p.startswith("/") for p in paths)
+    ):
+        raise ValueError(
+            f"{name}: http_route.public.paths must be a non-empty list of "
+            "absolute path patterns (e.g. /shares/*)"
+        )
+    if route.get("wan", False):
+        raise ValueError(
+            f"{name}: http_route sets both wan and public - public already "
+            "decides what the WAN sees; drop wan"
+        )
+    if not config.get("wan_enable", False):
+        raise ValueError(
+            f"{name}: http_route.public needs caddy.wan_enable: true - "
+            "it is served on the WAN-facing listener"
+        )
+    if not config.get("https", False):
+        raise ValueError(
+            f"{name}: http_route.public needs caddy.https: true - "
+            "its address gets a real Let's Encrypt certificate"
+        )
+    if not general.get("wan_host"):
+        raise ValueError(f"{name}: http_route.public needs general.wan_host")
+    return f"{public['subdomain']}.{general['wan_host']}"
+
+
+# browsers outside the tunnel have never seen caddy's local CA, so a public
+# address needs a publicly trusted certificate. TLS-ALPN on 443 only - port 80
+# is never opened on the WAN, so the HTTP challenge could only time out
+_ACME_TLS = [
+    "\ttls {",
+    "\t\tissuer acme {",
+    "\t\t\tdisable_http_challenge",
+    "\t\t}",
+    "\t}",
+]
+
+
+def _public_blocks(
+    name: str, host: str, route: dict[str, Any], host_ip: str
+) -> list[str]:
+    address = f"https://{host}"
+    # the same address twice: caddy keeps sites with different binds on
+    # separate listeners, so the tunnel gets the whole service while the WAN
+    # listener only ever sees the allowed paths. Certificates are per hostname,
+    # not per listener - the tls issuer goes on one block only, since two
+    # policies for one name is a config error
+    tunnel = [f"{address} {{", f"\tbind {host_ip}"]
+    tunnel += _body(name, "http_route", route)
+    tunnel += ["}", ""]
+    wan = [
+        f"{address} {{",
+        *_ACME_TLS,
+        f"\t@public path {' '.join(route['public']['paths'])}",
+        "\thandle @public {",
+        f"\t\treverse_proxy localhost:{route['port']}",
+        "\t}",
+        "\thandle {",
+        "\t\trespond 404",
+        "\t}",
+        "}",
+        "",
+    ]
+    return tunnel + wan
+
+
 def _body(name: str, kind: str, route: dict[str, Any]) -> list[str]:
     if kind == "http_route":
         _require(name, kind, route, ("subdomain", "port"))
@@ -93,12 +168,18 @@ def _site_blocks(
             address = (
                 f"{scheme}://{subdomain}.{apex}" if subdomain else f"{scheme}://{apex}"
             )
-            if address in claimed:
-                raise ValueError(
-                    f"{name}: {address} is already served by '{claimed[address]}' - "
-                    "two components cannot claim the same address"
-                )
-            claimed[address] = name
+            public_host = None
+            if kind == "http_route" and route.get("public"):
+                public_host = _public_host(name, route, config, general)
+
+            public_address = f"https://{public_host}" if public_host else None
+            for claim in filter(None, (address, public_address)):
+                if claim in claimed:
+                    raise ValueError(
+                        f"{name}: {claim} is already served by '{claimed[claim]}' - "
+                        "two components cannot claim the same address"
+                    )
+                claimed[claim] = name
 
             block = [f"{address} {{"]
             bind_line = _bind_line(
@@ -106,9 +187,17 @@ def _site_blocks(
             )
             if bind_line:
                 block.append(bind_line)
-            block += _body(name, kind, route)
+            if public_host:
+                # one canonical address: the service is reached (and builds
+                # its own links) under its public name, over the tunnel too
+                block.append(f"\tredir https://{public_host}{{uri}}")
+            else:
+                block += _body(name, kind, route)
             block += ["}", ""]
             lines += block
+
+            if public_host:
+                lines += _public_blocks(name, public_host, route, general["host_ip"])
     return lines
 
 

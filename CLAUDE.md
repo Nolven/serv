@@ -13,8 +13,12 @@ is true it declares a `firewall_rule` for 443/tcp, and any individual
 `http_route` consumer can opt itself into that WAN-facing listener with
 `wan: true` on its own subdomain config (e.g. `pihole.subdomain.wan: true`).
 Everything else stays wg0-only - caddy `bind`s each site block that isn't
-opted in to `general.host_ip` so it's unreachable even if 443 is open. Opting
-a route in without `caddy.wan_enable` set is a validation error.
+opted in to `general.host_ip` so it's unreachable even if 443 is open (the
+firewall also drops anything addressed to `host_ip` that didn't arrive on
+wg0, so a LAN device can't route to it directly). Opting a route in without
+`caddy.wan_enable` set is a validation error. A route can instead expose
+only some of its paths to the WAN, under a public name - see
+`http_route.public`.
 
 Every subdomain this host serves is published by declaring a capability that
 carries one - `http_route` (proxied to a port) or `static_site` (served off
@@ -56,7 +60,8 @@ never by naming each other directly.
   component name.
 - Capability vocabulary (extend this list before a component needs a new
   shape - do not invent a key inline):
-  - `http_route: {subdomain: str, port: int, redir?: str, wan?: bool}` - an
+  - `http_route: {subdomain: str, port: int, redir?: str, wan?: bool,
+    public?: {subdomain: str, paths: [str]}}` - an
     HTTP service a reverse proxy may expose. `redir`, if present, is a path
     (e.g. `/admin`) that bare `/` should redirect to. `wan`, if true, opts
     this specific route into being reachable from outside the WireGuard
@@ -65,6 +70,19 @@ never by naming each other directly.
     true requires `caddy.wan_enable: true` or rendering fails. Every declared
     `subdomain` is also listed on the apex index page - nothing extra to
     declare for that, and nothing that opts out of it.
+    `public`, if present, gives the service a second, publicly resolvable
+    address `<public.subdomain>.<general.wan_host>` (the apex domain only
+    resolves over the tunnel) where the WAN sees *only* `paths` (caddy path
+    patterns, e.g. `/shares/*`) and gets 404 for everything else, while
+    tunnel clients get the whole service under that same name. Its
+    `<subdomain>.<apex_domain>` address then just redirects there, so the
+    service is always reached - and builds any links it hands out - under
+    its public name. Mutually exclusive with `wan`; requires
+    `caddy.wan_enable` and `caddy.https` (the public address gets a Let's
+    Encrypt certificate via TLS-ALPN on 443). Consumed by `caddy` and by any
+    `dns_resolver` provider, which must answer the public address with
+    `general.host_ip` for tunnel clients - otherwise they'd resolve it to the
+    WAN address and only ever see `paths`.
   - `static_site: {root: str, subdomain?: str, browsable?: bool, wan?: bool,
     cache?: bool}` -
     a directory of files a reverse proxy may serve directly off disk, with no
@@ -115,7 +133,7 @@ never by naming each other directly.
 # Project structure
 - /
   - deploy.sh           # entry point: bootstrap venv, exec main.py "$@"
-  - config.yaml         # user-edited, gitignored, 0600
+  - config.yaml         # user-edited
 - lib/
   - py/                  # python scripts
     - component_name.py  # entry point for 1st component configuration; should be 1-to-1 name as in /config.yaml
