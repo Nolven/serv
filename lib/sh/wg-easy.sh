@@ -52,7 +52,7 @@ fi
 
 if ! command -v sqlite3 >/dev/null 2>&1; then
     echo "[INFO] installing sqlite3"
-    apt-get install -y --no-install-recommends sqlite3 >/dev/null
+    apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends sqlite3 >/dev/null
 fi
 
 # the db only exists once wg-easy has started at least once - on a first

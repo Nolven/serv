@@ -83,7 +83,9 @@ fileserver:
         #                    /web/client) - pihole resolves the name to host_ip
         #   from the WAN     share-link pages only, everything else 404s. Needs
         #                    caddy.wan_enable + caddy.https + 443 forwarded on the
-        #                    router; gets a Let's Encrypt certificate
+        #                    router; gets a Let's Encrypt certificate (while that
+        #                    fails, caddy's local CA instead - the tunnel side keeps
+        #                    working, WAN visitors see a certificate warning)
         # Create links from that address - sftpgo builds each link from the
         # address you opened it at. <subdomain.name>.<general.apex_domain> (listed
         # on the landing page) just redirects there.

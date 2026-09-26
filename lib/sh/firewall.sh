@@ -18,7 +18,7 @@ install_path=$(cat "$INSTALL_PATH_FILE")
 
 if ! command -v nft >/dev/null 2>&1; then
     echo "[INFO] installing nftables"
-    apt-get install -y --no-install-recommends nftables >/dev/null
+    apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends nftables >/dev/null
 fi
 
 nft -c -f "$RULESET_STAGED"

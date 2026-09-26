@@ -83,12 +83,18 @@ def _public_host(
 
 # browsers outside the tunnel have never seen caddy's local CA, so a public
 # address needs a publicly trusted certificate. TLS-ALPN on 443 only - port 80
-# is never opened on the WAN, so the HTTP challenge could only time out
+# is never opened on the WAN, so the HTTP challenge could only time out.
+# The tunnel block shares this certificate (one per hostname), so if ACME
+# can't validate (443 not forwarded, WAN down at renewal) caddy falls back to
+# its local CA rather than having no certificate at all - keeping the tunnel
+# side up, while WAN visitors get a cert warning until ACME succeeds again
+# (retried each time the short-lived internal cert renews)
 _ACME_TLS = [
     "\ttls {",
     "\t\tissuer acme {",
     "\t\t\tdisable_http_challenge",
     "\t\t}",
+    "\t\tissuer internal",
     "\t}",
 ]
 

@@ -10,7 +10,7 @@ fi
 
 echo "[INFO] installing docker (official apt repo)"
 
-apt-get install -y --no-install-recommends ca-certificates curl gnupg >/dev/null
+apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends ca-certificates curl gnupg >/dev/null
 
 install -m 0755 -d /etc/apt/keyrings
 if [[ ! -f /etc/apt/keyrings/docker.gpg ]]; then
@@ -23,9 +23,9 @@ if [[ ! -f /etc/apt/sources.list.d/docker.list ]]; then
     . /etc/os-release
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $VERSION_CODENAME stable" \
         | tee /etc/apt/sources.list.d/docker.list >/dev/null
-    apt-get update -qq
+    apt-get -o DPkg::Lock::Timeout=300 update -qq
 fi
 
-apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt-get -o DPkg::Lock::Timeout=300 install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 systemctl enable --now docker

@@ -22,8 +22,17 @@ if [[ -z "$script_path" ]]; then
     exit 1
 fi
 
-echo "[INFO] ensuring python3-requests and python3-systemd are installed"
-apt-get install -y --no-install-recommends python3-requests python3-systemd >/dev/null
+missing_pkgs=()
+for pkg in python3-requests python3-systemd; do
+    # shellcheck disable=SC2016 # ${Status} is a dpkg-query format field, not a shell expansion
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+        missing_pkgs+=("$pkg")
+    fi
+done
+if (( ${#missing_pkgs[@]} > 0 )); then
+    echo "[INFO] installing ${missing_pkgs[*]}"
+    apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends "${missing_pkgs[@]}" >/dev/null
+fi
 
 mkdir -p "$(dirname "$script_path")"
 

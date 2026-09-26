@@ -20,14 +20,14 @@ fi
 
 if ! command -v caddy >/dev/null 2>&1; then
     echo "[INFO] installing caddy from the official apt repo"
-    apt-get install -y --no-install-recommends \
+    apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends \
         debian-keyring debian-archive-keyring apt-transport-https curl gnupg >/dev/null
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
         | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
         | tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
-    apt-get update -qq
-    apt-get install -y caddy
+    apt-get -o DPkg::Lock::Timeout=300 update -qq
+    apt-get -o DPkg::Lock::Timeout=300 install -y caddy
 fi
 
 # site blocks bind general.host_ip, which may not exist on the host yet

@@ -73,7 +73,7 @@ if [[ "${cfg[SAMBA_ENABLE]}" == true ]]; then
 
     if ! command -v smbd >/dev/null 2>&1; then
         echo "[INFO] installing samba"
-        apt-get install -y --no-install-recommends samba >/dev/null
+        apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends samba >/dev/null
     fi
 
     # NetBIOS is off in smb.conf, so nmbd has nothing left to do

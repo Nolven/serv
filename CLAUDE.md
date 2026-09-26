@@ -79,7 +79,9 @@ never by naming each other directly.
     service is always reached - and builds any links it hands out - under
     its public name. Mutually exclusive with `wan`; requires
     `caddy.wan_enable` and `caddy.https` (the public address gets a Let's
-    Encrypt certificate via TLS-ALPN on 443). Consumed by `caddy` and by any
+    Encrypt certificate via TLS-ALPN on 443, falling back to caddy's local CA
+    while that fails, so tunnel clients never lose access to it over a WAN
+    problem). Consumed by `caddy` and by any
     `dns_resolver` provider, which must answer the public address with
     `general.host_ip` for tunnel clients - otherwise they'd resolve it to the
     WAN address and only ever see `paths`.

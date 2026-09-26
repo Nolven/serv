@@ -14,7 +14,7 @@ fi
 
 if ! command -v sshd >/dev/null 2>&1; then
     echo "[INFO] installing openssh-server"
-    apt-get install -y --no-install-recommends openssh-server >/dev/null
+    apt-get -o DPkg::Lock::Timeout=300 install -y --no-install-recommends openssh-server >/dev/null
 fi
 
 if [[ "$FORCE" != true ]] && cmp -s "$CONF_STAGED" "$CONF_INSTALLED" 2>/dev/null; then
