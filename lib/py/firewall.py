@@ -13,8 +13,9 @@ def declare(config: dict[str, Any], general: dict[str, Any]) -> dict[str, Any]:
     return {"config_file": {"path": nft_file_path}}
 
 
-def _rules_from_registry(registry: dict[str, Any]) -> list[str]:
-    lines: list[str] = []
+def _rules_from_registry(registry: dict[str, Any]) -> list[tuple[str, str, int]]:
+    """Every declared firewall_rule, validated, as (component, proto, port)."""
+    rules: list[tuple[str, str, int]] = []
     for name in sorted(registry):
         rule = registry[name].get("firewall_rule")
         if not rule:
@@ -29,7 +30,41 @@ def _rules_from_registry(registry: dict[str, Any]) -> list[str]:
             raise ValueError(
                 f"{name}: firewall_rule.proto must be 'tcp' or 'udp', got '{proto}'"
             )
-        lines.append(f"\t\t{proto} dport {rule['port']} accept # {name}")
+        rules.append((name, proto, rule["port"]))
+    return rules
+
+
+def _forward_chain(rules: list[tuple[str, str, int]]) -> list[str]:
+    """Hold docker-published ports to the same policy as the input chain.
+
+    Docker publishes a port by DNAT-ing it to a container, so the packet is
+    forwarded rather than delivered locally and never reaches the input
+    chain - a "8081:8081" port is otherwise open to the whole LAN (and to the
+    WAN over IPv6, if the host has a global address). New DNAT-ed connections
+    are dropped unless they came through the tunnel, from a local container,
+    or to a port some component declared a firewall_rule for. Everything that
+    isn't DNAT-ed (tunnel peers reaching the LAN, container egress, replies)
+    is untouched.
+    """
+    lines = [
+        "\tchain forward {",
+        "\t\ttype filter hook forward priority 0; policy accept;",
+        "",
+    ]
+    for name, proto, port in rules:
+        lines.append(
+            f"\t\tct state new ct status dnat meta l4proto {proto} "
+            f"ct original proto-dst {port} accept # {name}"
+        )
+    lines += [
+        "\t\t# anything else published is for the tunnel only (plus containers",
+        "\t\t# reaching each other through the host)",
+        (
+            f'\t\tct state new ct status dnat iifname != "{WG_INTERFACE}" '
+            'iifname != "docker0" iifname != "br-*" drop'
+        ),
+        "\t}",
+    ]
     return lines
 
 
@@ -53,15 +88,18 @@ def _tunnel_address_rule(host_ip: str | None) -> list[str]:
 
 
 def _ruleset(registry: dict[str, Any], host_ip: str | None) -> str:
-    wan_rules = _rules_from_registry(registry)
+    rules = _rules_from_registry(registry)
+    wan_rules = [
+        f"\t\t{proto} dport {port} accept # {name}" for name, proto, port in rules
+    ]
 
     lines = [
         "#!/usr/sbin/nft -f",
         "",
         # scoped to our own table only - a global "flush ruleset" would also
-        # wipe whatever iptables-nft has installed for wireguard's NAT/
-        # FORWARD/DOCKER-USER rules (lib/sh/wireguard.sh), since both share
-        # the same nf_tables backend on modern Debian.
+        # wipe whatever iptables-nft has installed for docker's and wg-easy's
+        # NAT/FORWARD rules, since both share the same nf_tables backend on
+        # modern Debian.
         # "add" before "flush" so this file is self-sufficient on its own -
         # nftables.service reloads it directly on every boot (netfilter
         # state doesn't survive a reboot), with no help from firewall.sh
@@ -89,6 +127,8 @@ def _ruleset(registry: dict[str, Any], host_ip: str | None) -> str:
         ]
     lines += [
         "\t}",
+        "",
+        *_forward_chain(rules),
         "}",
         "",
     ]

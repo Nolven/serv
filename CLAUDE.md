@@ -108,7 +108,11 @@ never by naming each other directly.
     the WireGuard tunnel. The firewall trusts the wg0 interface entirely, so
     only declare this for something that must work before/outside the
     tunnel exists (e.g. WireGuard's own listen port) - not for services only
-    reachable over the tunnel.
+    reachable over the tunnel. This covers docker-published ports too: the
+    firewall's forward chain drops DNAT-ed connections that didn't arrive on
+    wg0 (or a docker bridge) unless their port is declared here, so a
+    compose `ports:` entry never opens anything to the LAN/WAN by itself.
+    Still publish ports only the reverse proxy uses on `127.0.0.1`.
   - `config_file: {path: str}` - the absolute, on-host path to a config file
     worth exposing for convenient inspection/editing. `path` is the file's
     real final location (e.g. under `general.install/<name>/...`, or a fixed

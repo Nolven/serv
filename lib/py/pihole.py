@@ -98,7 +98,12 @@ def render(
         [f"address=/{apex_domain}/{host_ip}"]
         + [f"address=/{host}/{host_ip}" for host in _public_hosts(general, registry)]
     )
-    service["ports"] = ["53:53/tcp", "53:53/udp", f"{port}:{port}/tcp"]
+    # the webui is only ever reached through caddy's reverse_proxy localhost,
+    # so it's published on loopback alone. DNS stays on every address: peers
+    # query it at host_ip, and binding host_ip itself would fail at boot
+    # whenever docker starts before wg0 exists - the firewall's forward chain
+    # keeps it wg0-only instead
+    service["ports"] = ["53:53/tcp", "53:53/udp", f"127.0.0.1:{port}:{port}/tcp"]
 
     compose_text = write_yaml(out / "compose.yaml", compose, mode=0o644)
     info(f"Generated pihole compose:\n{compose_text}")

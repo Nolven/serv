@@ -158,7 +158,7 @@ frigate:
                         - ./config:/config
                         - ./storage:/media/frigate
                 ports:
-                        - "8971:8971"
+                        - "127.0.0.1:8971:8971"  # web UI - loopback only, caddy proxies to it
                         # - "5000:5000" # Internal unauthenticated access. Expose carefully.
                         # - "8554:8554" # RTSP feeds
                         - "8555:8555/tcp" # WebRTC over tcp
