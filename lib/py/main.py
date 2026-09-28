@@ -13,6 +13,8 @@ from utils import error, info, passthrough, set_log_file, warn, write_yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = ROOT / "config.yaml"
+# value of every key config.yaml.example ships without a usable default
+PLACEHOLDER = "CHANGE_ME"
 
 
 def load_config() -> dict[str, Any]:
@@ -52,7 +54,36 @@ def validate_config(data: dict[str, Any]) -> list[str]:
                 f"component '{name}' is listed under components: but has no '{name}:' section"
             )
 
+    for section in ("general", *components):
+        for key in find_placeholders(data.get(section), section):
+            errors.append(
+                f"{key} is still '{PLACEHOLDER}' - set it in {CONFIG_PATH.name}"
+            )
+
     return errors
+
+
+def find_placeholders(node: Any, path: str) -> list[str]:
+    """Dotted paths of every value under node still equal to PLACEHOLDER.
+
+    A mapping with `enable: false` is skipped whole - an unused subcomponent
+    (e.g. fileserver.samba) may keep its placeholders.
+    """
+    if isinstance(node, dict):
+        if node.get("enable") is False:
+            return []
+        return [
+            found
+            for key, value in node.items()
+            for found in find_placeholders(value, f"{path}.{key}")
+        ]
+    if isinstance(node, list):
+        return [
+            found
+            for index, value in enumerate(node)
+            for found in find_placeholders(value, f"{path}[{index}]")
+        ]
+    return [path] if node == PLACEHOLDER else []
 
 
 def load_component_module(name: str) -> ModuleType:

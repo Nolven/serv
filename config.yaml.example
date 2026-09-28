@@ -1,5 +1,6 @@
-# Copy this file to config.yaml, fill in the placeholders, then run
+# Copy this file to config.yaml, replace every "CHANGE_ME", then run
 # ./deploy.sh --check to validate it. config.yaml holds credentials.
+# Any CHANGE_ME left in general or an enabled component stops every run.
 
 # uncomment to enable components
 components:
@@ -16,14 +17,14 @@ components:
 
 ##################################################################
 general:
-        apex_domain: "example.com"        # your domain
+        apex_domain: "CHANGE_ME"          # your domain
         hostname: "myhost"                # this host's name
         fileserver_root: /srv/share
 
         build_path: ./build               # required - where --generate writes rendered configs
         install: /stacks/example          # required - where everything non-shared will exist on the target host
         host_ip: 10.13.13.1               # required by pihole - the IP peers should use to reach this host (typically its WireGuard address)
-        wan_host: "myhost.duckdns.org"    # required by wg-easy - public hostname WG clients connect to (your ddns.domain, entered by hand - components can't reference each other)
+        wan_host: "CHANGE_ME"             # required by wg-easy - public hostname WG clients connect to (your ddns.domain, entered by hand - components can't reference each other)
 
         # optional - one folder of symlinks to every component's "main" config
         # file, for convenient inspection/editing. Only set up during
@@ -71,7 +72,7 @@ fileserver:
                 enable: true
                 share_name: share    # required - the name you mount
                 login: "me"          # required - SMB login; created as a no-login Linux user (no shell, no SSH)
-                password: ""         # required - SMB password; separate from every other password here
+                password: "CHANGE_ME" # required - SMB password; separate from every other password here
 
         # docker (drakkan/sftpgo, version pinned in its compose.yaml). Web UI for
         # general.fileserver_root (browse, upload, download) plus expiring share and
@@ -102,14 +103,14 @@ fileserver:
                 share_link:
                         subdomain: share     # required - links are served at share.<general.wan_host>
                 admin_user: "admin"          # required - admin UI login (manages accounts, not files)
-                admin_pass: ""               # required - USER, BE RESPONSIBLE
+                admin_pass: "CHANGE_ME"      # required - USER, BE RESPONSIBLE
                 user:                        # your everyday login: all of general.fileserver_root, cannot create links
                         name: "me"
-                        password: ""
+                        password: "CHANGE_ME"
                 outbox:                      # the only account that can create links - it sees nothing outside its
                                              # folder, so no link (or bug in link handling) can reach the rest
                         name: "outbox"
-                        password: ""
+                        password: "CHANGE_ME"
                         folder: outbox       # required - under general.fileserver_root; created on deploy. Put files
                                              # here to share them; upload links must point at a folder in here too
                         quota: 20G           # total size the outbox may grow to (caps what uploaders fill); 0 = unlimited
@@ -128,7 +129,7 @@ beszel:
                 port: 8090                     # required - host-side port for the hub's web UI
                 wan: false
         admin_email: "admin@example.com"  # required - initial hub login; any address, no mail is sent to it
-        admin_pass: ""                     # required - min 10 chars, or the hub skips creating the user
+        admin_pass: "CHANGE_ME"            # required - min 10 chars, or the hub skips creating the user
 
         # One-time pairing. The hub generates its public key and registration
         # token on first run, so these cannot be known before it starts:
@@ -171,9 +172,9 @@ frigate:
         # onvif_port is optional - omit to skip onvif for that camera.
         cams:
                front_door:                 # required - name shown in Frigate/go2rtc, must be unique
-                       login: ""            # required - camera RTSP/ONVIF username
-                       password: ""         # required - camera RTSP/ONVIF password
-                       ip: 0.0.0.0          # required - camera IP
+                       login: "CHANGE_ME"   # required - camera RTSP/ONVIF username
+                       password: "CHANGE_ME" # required - camera RTSP/ONVIF password
+                       ip: "CHANGE_ME"      # required - camera IP
                        stream: "stream1"    # camera's RTSP stream path
                        detect: false
                        onvif_port: 8000
@@ -183,8 +184,8 @@ frigate:
 # read-only under components/ddns/)
 ddns:
         bin_path: /usr/local/bin          # required - absolute path; the systemd unit's ExecStart is generated from this
-        domain: ""                        # required - your duckdns subdomain
-        token: ""                         # required - your duckdns token
+        domain: "CHANGE_ME"               # required - your duckdns subdomain
+        token: "CHANGE_ME"                # required - your duckdns token
 
 ##################################################################
 # docker (pihole/pihole). DHCP is off - DNS/ad-blocking only. Frees host
@@ -198,7 +199,7 @@ pihole:
                 name: "pihole"             # required - reverse-proxy subdomain
                 port: 8081                 # required - Pi-hole web UI port
                 redir: /admin              # optional - bare "/" redirects here (Pi-hole's UI lives under /admin)
-        admin_pass: ""                     # required
+        admin_pass: "CHANGE_ME"            # required
         upstream_dns: "1.1.1.1"            # required - single value or a list; Pi-hole has no default, empty means it resolves nothing
 
 ##################################################################
@@ -216,7 +217,7 @@ wg-easy:
                                             # component opens it on the WAN - that's how the tunnel gets reached
                                             # in the first place
         admin_user: "admin"                # required - webui login
-        admin_pass: "changeme-please"      # required - USER, BE RESPONSIBLE - CHANGE
+        admin_pass: "CHANGE_ME"            # required - USER, BE RESPONSIBLE - CHANGE
         subdomain:
                 name: wg                   # required - reverse-proxy subdomain
                 port: 51821                # required - webui's own listen port

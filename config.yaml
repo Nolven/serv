@@ -13,10 +13,10 @@ components:
 
 ##################################################################
 general:
-        apex_domain: "noor.now"
+        apex_domain: "CHANGE_ME"
         hostname: "noor"
         host_ip: 10.100.0.1         # since connection is possible only through wireguard; it's both hip and wg iface
-        wan_host: "33.duckdns.org"  # public hostname WG clients connect to should be the same as in ddns.domain
+        wan_host: "CHANGE_ME"       # public hostname WG clients connect to should be the same as in ddns.domain
 
         fileserver_root: /srv/share # caddy and fileserver components use this
 
@@ -40,7 +40,7 @@ beszel:
                 port: 8090
                 wan: false
         admin_email: "admin@noor.now"        # hub login - any address, no mail is sent to it
-        admin_pass: "changeme-please"   # USER, BE RESPONSIBLE - CHANGE (min 10 chars)
+        admin_pass: "CHANGE_ME"         # USER, BE RESPONSIBLE - CHANGE (min 10 chars)
 
         # One-time pairing. The hub generates its public key and registration
         # token on first run, so these cannot be known before it starts:
@@ -86,7 +86,7 @@ fileserver:
                 enable: true
                 share_name: share    # required - the name you mount
                 login: "nick"        # required - SMB login; created as a no-login Linux user (no shell, no SSH)
-                password: ""         # required - SMB password; separate from every other password here
+                password: "CHANGE_ME" # required - SMB password; separate from every other password here
 
         # docker (drakkan/sftpgo, version pinned in its compose.yaml). Web UI for
         # general.fileserver_root (browse, upload, download) plus expiring share and
@@ -115,14 +115,14 @@ fileserver:
                 share_link:
                         subdomain: share     # required - links are served at share.<general.wan_host>
                 admin_user: "admin"          # required - admin UI login (manages accounts, not files)
-                admin_pass: ""               # required - USER, BE RESPONSIBLE
+                admin_pass: "CHANGE_ME"      # required - USER, BE RESPONSIBLE
                 user:                        # your everyday login: all of general.fileserver_root, cannot create links
                         name: "nick"
-                        password: ""
+                        password: "CHANGE_ME"
                 outbox:                      # the only account that can create links - it sees nothing outside its
                                              # folder, so no link (or bug in link handling) can reach the rest
                         name: "outbox"
-                        password: ""
+                        password: "CHANGE_ME"
                         folder: outbox       # required - under general.fileserver_root; created on deploy. Put files
                                              # here to share them; upload links must point at a folder in here too
                         quota: 20G           # total size the outbox may grow to (caps what uploaders fill); 0 = unlimited
@@ -151,9 +151,9 @@ frigate:
         # onvif_port is optional - omit to skip onvif for that camera
         cams:
                name:
-                       login: "asd"
-                       password: "asd"
-                       ip: 1.1.1.1
+                       login: "CHANGE_ME"
+                       password: "CHANGE_ME"
+                       ip: "CHANGE_ME"
                        stream: "stream1"
                        detect: false
                        onvif_port: 8000
@@ -163,8 +163,8 @@ frigate:
 # https://github.com/Nolven/duckdns_keepup
 ddns:
         bin_path: /usr/local/bin
-        domain: "33"
-        token: "321d12ed12"
+        domain: "CHANGE_ME"
+        token: "CHANGE_ME"
 
 ##################################################################
 pihole:
@@ -174,7 +174,7 @@ pihole:
                 name: pihole
                 redir: /admin
                 wan: false
-        admin_pass: 12345         # USER, BE RESPONSIBLE - CHANGE
+        admin_pass: "CHANGE_ME"   # USER, BE RESPONSIBLE - CHANGE
         upstream_dns: 8.8.8.8
 
 ###################################################################
@@ -188,7 +188,7 @@ wg-easy:
         server_mask: 24
         listen_port: 44444
         admin_user: "admin"
-        admin_pass: "changeme-please"   # USER, BE RESPONSIBLE - CHANGE
+        admin_pass: "CHANGE_ME"         # USER, BE RESPONSIBLE - CHANGE
         subdomain:
                 name: wg
                 port: 51821

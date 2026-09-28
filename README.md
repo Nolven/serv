@@ -15,10 +15,21 @@ and docker).
 
 ```bash
 cp config.yaml.example config.yaml
-# edit config.yaml
+# edit config.yaml - replace every "CHANGE_ME"
 ./deploy.sh --check            # validate before doing anything
 ./deploy.sh --deploy
 ```
+
+**Every `CHANGE_ME` must be replaced before anything runs.** Keys with no
+safe default (domains, the DuckDNS token, every password, camera
+credentials) ship as `"CHANGE_ME"`. If one is still set to that value in
+`general` or in a component listed under `components:`, every mode stops
+before anything is generated or installed. That includes `--check` and
+`--dry-run`. Each leftover key is printed with its full path, e.g.
+`[ERROR] ddns.token is still 'CHANGE_ME' - set it in config.yaml`, and the
+run exits 1. Placeholders are ignored in sections of components that aren't
+listed under `components:`, and in any sub-section with `enable: false` (e.g.
+`fileserver.samba`). Such a section can stay unfilled until you turn it on.
 
 `deploy.sh` bootstraps its own venv and installs `requirements.txt` — no
 manual Python setup needed.
